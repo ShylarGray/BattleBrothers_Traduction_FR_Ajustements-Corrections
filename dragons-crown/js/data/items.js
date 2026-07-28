@@ -175,8 +175,10 @@ DC.Items = (function () {
     if (item.kind === 'consumable') { var c = consumable(item.id); return c ? c.value : 10; }
     return Math.floor(item.value * 1.25);
   }
-  /** Coût d'expertise : proportionnel à la valeur estimée, avec un plancher. */
-  function appraiseCost(item) { return Math.max(40, Math.floor(item.value * 0.18)); }
+  /** Coût d'expertise : indexé sur le niveau du donjon, jamais sur la valeur de
+   *  l'objet — sinon le tarif affiché trahirait la rareté avant de payer et
+   *  l'expertise cesserait d'être un pari. */
+  function appraiseCost(item) { return Math.max(40, Math.round(8 * (item.level || 1))); }
 
   return {
     RARITY: RARITY, rarity: rarity, rarityIndex: rarityIndex,

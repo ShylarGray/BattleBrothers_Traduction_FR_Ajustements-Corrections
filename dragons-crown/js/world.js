@@ -243,6 +243,7 @@ DC.World = (function () {
       if (pr.freeze && Math.random() < 0.20) target.applyStatus('freeze', 60 * pr.freeze, 1);
       if (pr.shock && Math.random() < 0.18) { target.applyStatus('stun', 45, 1); this.fx.spark(target.x, target.z, target.centerY(), '#ffe84a', 10); }
       if (pr.lifesteal) attacker.heal(Math.max(1, Math.round(dealt * 0.06 * pr.lifesteal)));
+      if (pr.regen && !attacker.status.regen && Math.random() < 0.10) attacker.applyStatus('regen', 150, pr.regen);
     }
     if (isPlayerAttack && attacker.hero && attacker.hero.skills.e_elem && Math.random() < 0.3) {
       target.applyStatus(Math.random() < 0.5 ? 'burn' : 'freeze', 120, 1);
@@ -507,20 +508,47 @@ DC.World = (function () {
     return false;
   };
 
+  /**
+   * Point de contrôle : ce qui a franchi une porte est acquis. Butin, or et
+   * besace sont versés au profil et écrits sur disque, si bien que fermer
+   * l'onglet en plein donjon ne coûte plus que la salle en cours.
+   * L'XP, les niveaux et les points de compétence suivent automatiquement :
+   * run.party[i].hero référence l'objet héros du profil.
+   */
+  World.prototype.bankProgress = function () {
+    var p = this.game.profile, r = this.run;
+    r.bankedBag = r.bankedBag || [];
+    r.bag.splice(0).forEach(function (it) { p.storage.push(it); r.bankedBag.push(it); });
+    r.banked = (r.banked || 0) + r.gold;
+    p.gold += r.gold;
+    r.gold = 0;
+    // La besace doit refléter la consommation réelle : sinon une sauvegarde en
+    // cours d'expédition rendrait les potions déjà bues.
+    p.pouch = r.pouch
+      .map(function (s) { return { kind: 'consumable', id: s.id, qty: s.qty }; })
+      .filter(function (s) { return s.qty > 0; });
+    this.game.saveProfile();
+  };
+
   World.prototype.advanceRoom = function () {
+    // La sortie peut être franchie et actionnée dans la même image : sans ce
+    // garde-fou, la fin d'expédition serait comptabilisée deux fois.
+    if (this.state !== 'playing') return;
     var rooms = this.rooms();
     this.audio.play('door', 0.6);
+    this.bankProgress();
     if (this.roomIdx + 1 >= rooms.length) { this.finishRun(true); return; }
     this.state = 'transition';
     this.transT = 0;
     this.nextRoom = this.roomIdx + 1;
   };
 
-  World.prototype.finishRun = function (victory) {
+  World.prototype.finishRun = function (victory, reason) {
+    if (this.state === 'cleared' || this.state === 'failed') return;
     this.state = victory ? 'cleared' : 'failed';
     this.transT = 0;
     this.audio.stopMusic();
-    this.game.onRunEnd(victory);
+    this.game.onRunEnd(victory, reason);
   };
 
   /* ============================ Boucle ================================= */
@@ -675,10 +703,14 @@ DC.World = (function () {
 
   World.prototype.checkDefeat = function () {
     var anyUp = this.players.some(function (p) { return !p.isDowned; });
-    if (!anyUp) {
-      var canRevive = this.players.some(function (p) { return p.lives > 0; });
-      if (!canRevive) this.finishRun(false);
-    }
+    if (anyUp) return;
+    var canRevive = this.players.some(function (p) { return p.lives > 0; });
+    if (canRevive) return;
+    // Sursis avant la coupure : le joueur voit ce qui vient de le tuer et peut
+    // encore boire une fiole de résurrection. Sans cela, la défaite en solo
+    // tombe dans la même image que la seconde chute et se lit comme un plantage.
+    var waited = this.players.every(function (p) { return p.downedT > 90; });
+    if (waited) this.finishRun(false, 'defeat');
   };
 
   World.prototype.toast = function (msg) {

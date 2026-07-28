@@ -125,18 +125,25 @@ DC.Game = (function () {
     DC.UI.hide();
   };
 
-  Game.prototype.onRunEnd = function (victory) {
+  Game.prototype.onRunEnd = function (victory, reason) {
     var self = this;
     var p = this.profile, run = this.world.run;
 
-    // Butin : intégralement rapporté en cas de victoire, moitié sinon.
+    // Seul le butin de la salle en cours est en jeu : tout ce qui a franchi une
+    // porte a déjà été versé au profil par World.bankProgress().
+    // Une défaite ne coûte que les trouvailles ordinaires — la pièce rare qui
+    // rendait l'expédition mémorable est toujours conservée, sinon la perte
+    // est une loterie que le joueur ne peut pas raconter.
     var bag = run.bag.slice();
-    if (!victory) {
-      bag = bag.filter(function () { return Math.random() < 0.5; });
+    if (!victory && reason !== 'retreat') {
+      bag = bag.filter(function (it) {
+        return it.kind !== 'equip' || DC.Items.rarityIndex(it.rarity) >= 3;
+      });
     }
     bag.forEach(function (it) { p.storage.push(it); });
-    var goldGain = victory ? run.gold : Math.floor(run.gold * 0.5);
-    p.gold += goldGain;
+    var lost = victory ? 1 : (reason === 'retreat' ? 0.8 : 0.7);
+    var goldGain = Math.floor(run.gold * lost) + (run.banked || 0);
+    p.gold += Math.floor(run.gold * lost);
     p.stats.goldEarned += goldGain;
     p.stats.kills += run.kills;
     p.stats.runs++;
@@ -179,8 +186,9 @@ DC.Game = (function () {
       DC.Audio.playMusic('town');
       DC.UI.show('results', {
         result: {
-          victory: victory, gold: goldGain, kills: run.kills,
-          bestCombo: run.bestCombo, time: run.time, bag: bag, heroes: heroes
+          victory: victory, gold: goldGain, kills: run.kills, reason: reason,
+          bestCombo: run.bestCombo, time: run.time,
+          bag: (run.bankedBag || []).concat(bag), heroes: heroes
         }
       });
     }, 1400);
@@ -190,7 +198,7 @@ DC.Game = (function () {
     if (!this.world) return;
     this.state = 'playing';
     DC.UI.hide();
-    this.world.finishRun(false);
+    this.world.finishRun(false, 'retreat');
   };
 
   Game.prototype.pause = function () {

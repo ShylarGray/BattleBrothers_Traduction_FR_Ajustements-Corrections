@@ -153,7 +153,7 @@ DC.Enemies = (function () {
       atk({ name: 'Serres royales', dmg: 1.3, startup: 20, active: 10, recover: 30, reach: 60, width: 30, knock: 10, move: 10 }),
       atk({ name: 'Tempête de plumes', kind: 'shot', dmg: 0.9, startup: 34, active: 4, recover: 34, speed: 7.5, count: 5, spread: 0.28 }),
       atk({ name: 'Cri strident', kind: 'quake', dmg: 1.1, startup: 40, active: 12, recover: 40, reach: 170, width: 130, knock: 14, launch: 5 }),
-      atk({ name: 'Fonte du faucon', dmg: 1.8, startup: 30, active: 20, recover: 40, reach: 70, width: 34, knock: 16, move: 20, hitstop: 10 })
+      atk({ name: 'Fonte du faucon', phase: 2, dmg: 1.8, startup: 30, active: 20, recover: 40, reach: 70, width: 34, knock: 16, move: 20, hitstop: 10 })
     ]
   });
   E.gorgon = def({
@@ -163,7 +163,7 @@ DC.Enemies = (function () {
     palette: { skin: '#7ac0a0', hair: '#2a6a4a', accent: '#e8c84a', scale: '#3a8a6a' },
     attacks: [
       atk({ name: 'Balayage de queue', dmg: 1.3, startup: 24, active: 10, recover: 32, reach: 90, width: 40, knock: 16, launch: 4 }),
-      atk({ name: 'Regard pétrifiant', kind: 'gaze', dmg: 0.8, startup: 46, active: 20, recover: 40, reach: 220, width: 40, petrify: 150 }),
+      atk({ name: 'Regard pétrifiant', phase: 2, kind: 'gaze', dmg: 0.8, startup: 46, active: 20, recover: 40, reach: 220, width: 40, petrify: 150 }),
       atk({ name: 'Morsure de vipères', dmg: 1.2, startup: 20, active: 8, recover: 28, reach: 66, element: 'poison', hits: 2 }),
       atk({ name: 'Pluie d\'écailles', kind: 'shot', dmg: 1.0, startup: 32, active: 4, recover: 34, speed: 8, count: 4, spread: 0.3 })
     ]
@@ -176,7 +176,7 @@ DC.Enemies = (function () {
     attacks: [
       atk({ name: 'Faux d\'os', dmg: 1.3, startup: 24, active: 8, recover: 30, reach: 84, width: 34, knock: 12 }),
       atk({ name: 'Nova nécrotique', kind: 'quake', dmg: 1.4, startup: 44, active: 14, recover: 44, reach: 190, width: 150, element: 'dark', knock: 14 }),
-      atk({ name: 'Appel des morts', kind: 'summonEnemy', summon: 'skeleton', count: 3, startup: 50, active: 6, recover: 50 }),
+      atk({ name: 'Appel des morts', phase: 2, kind: 'summonEnemy', summon: 'skeleton', count: 3, startup: 50, active: 6, recover: 50 }),
       atk({ name: 'Rayon funeste', kind: 'shot', dmg: 1.5, startup: 36, active: 3, recover: 36, speed: 9, element: 'dark', pierce: true })
     ]
   });
@@ -187,7 +187,7 @@ DC.Enemies = (function () {
     palette: { skin: '#8a4a9a', sucker: '#e8c8d8', eye: '#e8e04a' },
     attacks: [
       atk({ name: 'Fouet de tentacule', dmg: 1.3, startup: 26, active: 12, recover: 32, reach: 130, width: 34, knock: 16 }),
-      atk({ name: 'Étreinte', kind: 'grab', dmg: 2.0, startup: 34, active: 10, recover: 46, reach: 90, width: 40, knock: 20, hitstop: 12 }),
+      atk({ name: 'Étreinte', phase: 2, kind: 'grab', dmg: 2.0, startup: 34, active: 10, recover: 46, reach: 90, width: 40, knock: 20, hitstop: 12 }),
       atk({ name: 'Jet d\'encre', kind: 'shot', dmg: 1.1, startup: 34, active: 4, recover: 36, speed: 6, count: 5, spread: 0.35, element: 'dark' }),
       atk({ name: 'Écrasement abyssal', kind: 'quake', dmg: 1.6, startup: 48, active: 16, recover: 48, reach: 210, width: 170, knock: 18, launch: 8 })
     ]
@@ -201,7 +201,7 @@ DC.Enemies = (function () {
       atk({ name: 'Massue de basalte', dmg: 1.5, startup: 30, active: 10, recover: 40, reach: 110, width: 44, knock: 18, launch: 6, hitstop: 10 }),
       atk({ name: 'Rocher enflammé', kind: 'shot', dmg: 1.4, startup: 40, active: 4, recover: 40, speed: 7, element: 'fire', radius: 60 }),
       atk({ name: 'Piétinement', kind: 'quake', dmg: 1.5, startup: 40, active: 14, recover: 44, reach: 200, width: 160, knock: 16, launch: 8 }),
-      atk({ name: 'Rage volcanique', kind: 'rage', dmg: 1.0, startup: 60, active: 90, recover: 50, reach: 120, width: 60, hits: 8, element: 'fire' })
+      atk({ name: 'Rage volcanique', phase: 2, kind: 'rage', dmg: 1.0, startup: 60, active: 90, recover: 50, reach: 120, width: 60, hits: 8, element: 'fire' })
     ]
   });
   E.dragon = def({
@@ -214,7 +214,7 @@ DC.Enemies = (function () {
       atk({ name: 'Souffle ardent', kind: 'breath', dmg: 0.9, startup: 46, active: 60, recover: 44, reach: 300, width: 46, element: 'fire', hits: 12 }),
       atk({ name: 'Balayage caudal', dmg: 1.4, startup: 24, active: 14, recover: 32, reach: 170, width: 60, knock: 22, launch: 7 }),
       atk({ name: 'Battement d\'ailes', kind: 'quake', dmg: 1.2, startup: 40, active: 16, recover: 40, reach: 260, width: 200, knock: 24, launch: 9, element: 'wind' }),
-      atk({ name: 'Pluie de météores', kind: 'rain', dmg: 1.2, startup: 60, active: 90, recover: 50, reach: 320, width: 240, hits: 14, element: 'fire' })
+      atk({ name: 'Pluie de météores', phase: 2, kind: 'rain', dmg: 1.2, startup: 60, active: 90, recover: 50, reach: 320, width: 240, hits: 14, element: 'fire' })
     ]
   });
 
@@ -234,7 +234,7 @@ DC.Enemies = (function () {
       def: d,
       maxHp: Math.round(d.hp * hpScale * coop),
       atk: Math.round(d.atk * atkScale),
-      defStat: Math.round(d.def * (1 + (lv - 1) * 0.16) * diffMult),
+      defStat: Math.round(d.def * (1 + (lv - 1) * 0.16)),
       xp: Math.round(d.xp * (1 + (lv - 1) * 0.28)),
       gold: Math.round(d.gold * (1 + (lv - 1) * 0.22))
     };

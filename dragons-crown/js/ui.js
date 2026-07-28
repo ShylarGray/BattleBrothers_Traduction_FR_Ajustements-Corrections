@@ -522,7 +522,9 @@ DC.UI = (function () {
       '<div><b>Durée</b><br>' + Math.floor(r.time / 60) + ' s</div>' +
       '</div>' +
       '<div class="res-heroes">' + heroesHtml + '</div>' +
-      (r.victory ? '' : '<p class="muted">La moitié du butin non rapporté a été perdue dans la fuite.</p>') +
+      (r.victory ? '' : '<p class="muted">' + (r.reason === 'retreat'
+        ? 'Retraite réussie : le butin est intact, une partie de l\'or de la dernière salle est restée sur place.'
+        : 'Les trouvailles ordinaires de la dernière salle ont été perdues ; les pièces rares ont été sauvées.') + '</p>') +
       '<h2>Butin</h2>' + lootHtml +
       '<div class="row-actions">' + btn('town', 'Retour en ville', null, 'big primary') + '</div>' +
       '</div>';
@@ -535,7 +537,7 @@ DC.UI = (function () {
       btn('resume', 'Reprendre', null, 'big primary') +
       btn('controls', 'Commandes') +
       btn('options', 'Options') +
-      btn('abandon', 'Abandonner l\'expédition', null, 'danger') +
+      btn('abandon', 'Battre en retraite', null, 'danger') +
       '</div></div>';
   }
 
@@ -846,7 +848,7 @@ DC.UI = (function () {
     },
     resume: function () { game.resume(); },
     abandon: function () {
-      if (!confirm('Abandonner l\'expédition en cours ? La moitié du butin sera perdue.')) return;
+      if (!confirm('Battre en retraite ? Vous gardez tout le butin ; 20 % de l\'or de la salle en cours est perdu.')) return;
       game.abandonRun();
     }
   };

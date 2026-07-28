@@ -64,8 +64,12 @@ DC.U = (function () {
   var rnd = makeRng((Date.now() ^ (Math.random() * 0xffffffff)) >>> 0);
 
   /* ---------------------------- Divers -------------------------------- */
+  // Le compteur repart de zéro à chaque chargement de page : on lui adjoint un
+  // marqueur de session, sinon un héros créé aujourd'hui entre en collision
+  // d'identité avec un héros sauvegardé hier.
   var _uid = 0;
-  function uid(prefix) { _uid++; return (prefix || 'id') + '_' + _uid; }
+  var _session = Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36);
+  function uid(prefix) { _uid++; return (prefix || 'id') + '_' + _session + '_' + _uid; }
 
   function fmtNum(n) {
     n = Math.floor(n);

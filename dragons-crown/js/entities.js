@@ -33,8 +33,13 @@ DC.Ent = (function () {
     this.atk = cfg.atk || 10;
     this.defStat = cfg.defStat || 0;
     this.speed = cfg.speed || 1;
-    this.poise = cfg.poise || 10;
-    this.poiseLeft = this.poise;
+    // Endurance : une cible est déséquilibrée quand elle a encaissé
+    // `poiseFrac` de ses PV max depuis sa dernière rupture. Exprimé en
+    // fraction, le nombre de coups nécessaires reste constant à tout niveau
+    // et à toute difficulté, sans aucune valeur à recalibrer.
+    this.poiseFrac = cfg.poiseFrac || 0.25;
+    this.poiseDmg = 0;
+    this.poiseCalm = 0;
     this.state = 'idle';
     this.stateT = 0;
     this.act = null;            // attaque en cours
@@ -213,7 +218,7 @@ DC.Ent = (function () {
       s.tick++;
       if (k === 'burn' && s.tick % 24 === 0) self.takeDamage(Math.max(2, Math.round(self.maxHp * 0.012 * s.power)), { silent: true, element: 'fire' });
       if (k === 'poison' && s.tick % 36 === 0) self.takeDamage(Math.max(2, Math.round(self.maxHp * 0.010 * s.power)), { silent: true, element: 'poison' });
-      if (k === 'regen' && s.tick % 30 === 0) self.heal(Math.round(self.maxHp * 0.02));
+      if (k === 'regen' && s.tick % 30 === 0) self.heal(Math.round(self.maxHp * 0.012 * (s.power || 1)));
       if (s.t <= 0) delete self.status[k];
     });
     Object.keys(this.buffs).forEach(function (k) {
@@ -249,9 +254,11 @@ DC.Ent = (function () {
   /* --------------------- Réaction aux coups reçus ---------------------- */
   Actor.prototype.react = function (d, from, dmg) {
     var heavy = (d.knock || 0) >= 10 || (d.launch || 0) > 0;
-    this.poiseLeft -= (dmg * 0.6 + (d.knock || 0) * 2);
-    var broken = this.poiseLeft <= 0;
-    if (broken) this.poiseLeft = this.poise;
+    // Les coups qui projettent entament davantage l'équilibre que les autres.
+    this.poiseDmg += dmg * (1 + (d.knock || 0) * 0.05);
+    this.poiseCalm = 0;
+    var broken = this.poiseDmg >= this.maxHp * this.poiseFrac;
+    if (broken) this.poiseDmg = 0;
 
     var dir = from ? U.sign(this.x - from.x) || from.facing : 1;
     var kb = (d.knock || 0) * (this.knockResist ? (1 - this.knockResist) : 1);
@@ -260,10 +267,14 @@ DC.Ent = (function () {
       this.vy = d.launch;
       this.state = 'down'; this.stateT = 0; this.downT = undefined;
       this.act = null;
-    } else if (broken || heavy || !this.superArmor) {
+    } else if (broken || heavy) {
+      // L'endurance (poise) décide seule de l'interruption : un coup léger ne
+      // stoppe plus systématiquement sa cible. Les gros ennemis peuvent donc
+      // riposter, et le joueur n'est plus enchaîné par la piétaille.
       if (this.state !== 'down') {
         this.state = 'hurt'; this.stateT = 0;
-        this.hurtT = Math.max(this.hurtT, 8 + Math.floor(dmg * 0.05));
+        // Plafonné : sinon la durée d'immobilisation explose avec la difficulté.
+        this.hurtT = Math.max(this.hurtT, 8 + Math.min(12, Math.floor(dmg * 0.05)));
         this.act = null;
       }
     }
@@ -276,6 +287,13 @@ DC.Ent = (function () {
     if (this.flash > 0) this.flash--;
     if (this.invuln > 0) this.invuln--;
     if (this.attackCd > 0) this.attackCd--;
+    // L'équilibre ne se rétablit qu'après 2 s sans encaisser : l'endurance
+    // mesure une pression soutenue, pas un cumul infini sur tout le combat.
+    if (!this.dead && this.poiseDmg > 0) {
+      if (++this.poiseCalm > 120) {
+        this.poiseDmg = Math.max(0, this.poiseDmg - this.maxHp * this.poiseFrac / 180);
+      }
+    }
     this.updateStatus();
 
     if (this.dead) {
@@ -387,7 +405,7 @@ DC.Ent = (function () {
     var st = DC.Hero.effectiveStats(hero);
     Actor.call(this, world, {
       team: 'player', maxHp: st.hp, atk: st.atk, defStat: st.def,
-      speed: st.spd, poise: 40 + st.def * 0.6, x: 100 + slot * 34, z: 70 + slot * 12,
+      speed: st.spd, poiseFrac: 0.22, x: 100 + slot * 34, z: 70 + slot * 12,
       size: { w: 26, d: 20, h: 58 }, name: hero.name
     });
     this.hero = hero;
@@ -451,7 +469,22 @@ DC.Ent = (function () {
     return DC.Input.pad(this.controller);
   };
 
+  var BUFFERED = ['attack', 'special', 'jump'];
+
   Player.prototype.update = function () {
+    // La manette est lue UNE fois par image, avant tout retour anticipé : une
+    // touche pressée pendant un hitstop, une récupération d'attaque ou un état
+    // de contrôle volé est mémorisée 8 images au lieu d'être perdue.
+    // (Lecture unique obligatoire : getInput() fait avancer l'horloge de l'IA.)
+    var pad = this._pad = this.getInput();
+    var b = this.buf || (this.buf = { attack: 0, special: 0, jump: 0 });
+    var frozen = this.hitstop > 0;
+    for (var k = 0; k < BUFFERED.length; k++) {
+      var key = BUFFERED[k];
+      if (pad.pressed[key]) b[key] = 8;
+      else if (b[key] > 0 && !frozen) b[key]--;
+    }
+
     if (this.hitstop > 0) { this.hitstop--; return; }
 
     // État « à terre » : le joueur doit être relevé par un allié ou dépenser une vie.
@@ -472,7 +505,20 @@ DC.Ent = (function () {
       // Personne pour aider : le héros dépense une vie et se relève seul.
       var allDown = allies.every(function (a) { return a.isDowned; });
       var wait = allDown ? 120 : 420;
-      if (this.downedT > wait && this.lives > 0) { this.lives--; this.revive(0.35); }
+      if (this.downedT > wait && this.lives > 0) { this.lives--; this.revive(0.35); return; }
+      // Dernier recours : une fiole de résurrection emportée se boit toute seule
+      // plutôt que de rester inutilisée dans la besace au moment de la défaite.
+      if (this.lives === 0 && this.downedT > 45) {
+        var pouch = this.world.run.pouch;
+        for (var f = 0; f < pouch.length; f++) {
+          if (pouch[f].id !== 'revive' || pouch[f].qty <= 0) continue;
+          pouch[f].qty--;
+          if (pouch[f].qty <= 0) pouch.splice(f, 1);
+          this.world.toast(this.name + ' brise une fiole de résurrection !');
+          this.revive(0.7);
+          return;
+        }
+      }
       return;
     }
 
@@ -515,8 +561,16 @@ DC.Ent = (function () {
 
     if (this.status.freeze || this.status.petrify) return;
 
-    var pad = this.getInput();
-    if (!this.canAct()) { this.handleAirActions(pad); return; }
+    var pad = this._pad;
+
+    // Relevé actif : à terre, une pression sort du sol sans attendre la fin du
+    // décompte passif. Rend au joueur la plus longue perte de contrôle du jeu.
+    if (this.state === 'down' && this.y <= 0 && (this.downT || 0) > 12 &&
+      (pad.pressed.attack || pad.pressed.jump || b.attack > 0 || b.jump > 0)) {
+      b.attack = 0; b.jump = 0;
+      this.state = 'getup'; this.stateT = 0; this.downT = undefined; this.invuln = 20;
+    }
+    if (!this.canAct()) return;
 
     /* -------------------- Déplacement -------------------- */
     var mx = pad.axisX, mz = pad.axisZ;
@@ -543,33 +597,35 @@ DC.Ent = (function () {
     }
 
     /* ------------------------ Saut ----------------------- */
-    if (pad.pressed.jump) {
+    if (b.jump > 0) {
       if (this.y === 0) {
+        b.jump = 0;
         this.vy = 9.4; this.state = 'jump'; this.stateT = 0;
         this.airJumpsLeft = this.airJumps;
         this.world.audio.play('jump', 0.35);
-      } else if (this.airJumpsLeft > 0) {
+      } else if (this.airJumpsLeft > 0 && pad.pressed.jump) {
+        // Le double saut ne se déclenche que sur un appui franc : sinon le
+        // tampon consommerait les deux sauts d'un coup.
+        b.jump = 0;
         this.airJumpsLeft--; this.vy = 8.4;
         this.world.fx.ring(this.x, this.z, this.y, '#ffffff', 30);
       }
     }
 
     /* --------------------- Attaques ---------------------- */
-    if (pad.pressed.attack) {
+    if (b.attack > 0) {
+      b.attack = 0;
       if (this.y > 0) this.startAttack(this.cls.air);
       else if (pad.held.down) this.doHeavy();
       else this.doCombo();
     }
-    if (pad.pressed.special) {
+    if (b.special > 0) {
+      b.special = 0;
       if (pad.held.down) this.doSuper();
       else this.doSpecial();
     }
     if (pad.pressed.item) this.useItem();
     if (pad.pressed.up) this.world.interact(this);
-  };
-
-  Player.prototype.handleAirActions = function (pad) {
-    if (this.state === 'jump' && pad && pad.pressed.attack) this.startAttack(this.cls.air);
   };
 
   Player.prototype.doCombo = function () {
@@ -773,7 +829,7 @@ DC.Ent = (function () {
     var d = s.def;
     Actor.call(this, world, {
       team: 'enemy', maxHp: s.maxHp, atk: s.atk, defStat: s.defStat,
-      speed: d.spd, poise: d.poise, size: d.size, flying: d.flying,
+      speed: d.spd, poiseFrac: U.clamp(d.poise / d.hp, 0.15, 0.40), size: d.size, flying: d.flying,
       x: opts.x || 0, z: opts.z || 75, name: d.name,
       scale: (d.scale || 1) * (opts.elite ? 1.18 : 1),
       facing: opts.facing || -1
@@ -788,7 +844,7 @@ DC.Ent = (function () {
       this.atk = Math.round(this.atk * 1.35);
       this.xpValue = Math.round(this.xpValue * 2.5);
       this.goldValue = Math.round(this.goldValue * 2.5);
-      this.poise *= 2; this.poiseLeft = this.poise;
+      this.poiseFrac = Math.min(0.5, this.poiseFrac * 1.4);
     }
     if (this.boss) { this.bossImmune = true; this.superArmor = true; this.knockResist = 0.9; this.getupTime = 24; }
     this.hoverY = d.flying ? (this.boss ? 60 : 34 + U.rnd.range(-8, 14)) : 0;
@@ -887,6 +943,9 @@ DC.Ent = (function () {
     var candidates = [];
     for (var i = 0; i < atks.length; i++) {
       var a = atks[i];
+      // Certaines attaques ne se débloquent qu'à partir d'une phase donnée :
+      // le boss révèle un nouveau coup en cours de combat, à apprendre.
+      if ((a.phase || 1) > this.phase) continue;
       var range = a.kind === 'shot' ? 460 : ((a.reach || 40) * this.scale * SCALE + 12);
       if (a.kind === 'quake' || a.kind === 'rain' || a.kind === 'breath') range = (a.reach || 120) * this.scale * SCALE;
       if (a.kind === 'summonEnemy') { if (this.summonCd > 0) continue; range = 900; }
@@ -896,17 +955,23 @@ DC.Ent = (function () {
       }
       if (dist > range) continue;
       if (!lined && a.kind !== 'quake' && a.kind !== 'rain' && a.kind !== 'summonEnemy' && a.kind !== 'heal') continue;
-      var w = 1;
-      if (this.boss) w = (a.kind === 'quake' || a.kind === 'rain' || a.kind === 'breath') ? (this.phase >= 2 ? 1.4 : 0.6) : 1;
+      // Anti-répétition : une attaque tout juste jouée devient improbable, ce
+      // qui fait émerger des enchaînements variés et donc lisibles.
+      var w = (a === this.lastAtk) ? 0.25 : 1;
+      if (this.boss) w *= (a.kind === 'quake' || a.kind === 'rain' || a.kind === 'breath') ? (this.phase >= 2 ? 1.4 : 0.6) : 1;
       candidates.push({ a: a, weight: w });
     }
     if (!candidates.length) return;
 
     var chosen = U.rnd.weighted(candidates).a;
+    this.lastAtk = chosen;
     if (chosen.kind === 'summonEnemy') this.summonCd = 420;
     this.startAttack(chosen);
-    this.attackCd = Math.round((this.boss ? 40 : 70) / (this.enraged ? 1.5 : 1) + U.rnd.int(0, 30));
-    if (this.boss) this.world.fx.telegraph(this, chosen);
+    // Le délai couvre l'animation PUIS une fenêtre de neutre déterministe :
+    // esquiver correctement ouvre toujours la même occasion de punir.
+    this.attackCd = this.act.total + Math.round((this.boss ? 30 : 34) / (this.enraged ? 1.5 : 1));
+    // Les coups qui projettent ou soulèvent sont annoncés, boss ou non.
+    if (this.boss || (chosen.knock || 0) >= 10 || chosen.launch) this.world.fx.telegraph(this, chosen);
   };
 
   Enemy.prototype.idleDrift = function () {

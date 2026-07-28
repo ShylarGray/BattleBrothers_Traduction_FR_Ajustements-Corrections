@@ -23,6 +23,44 @@ DC.Save = (function () {
     };
   }
 
+  /**
+   * Répare les collisions d'identifiants héritées des sauvegardes créées avant
+   * que l'uid ne porte un marqueur de session. Sans cela, deux héros peuvent
+   * partager un uid : les emplacements de groupe résolvent alors vers le même
+   * objet et le second héros devient injouable.
+   */
+  function repairIds(data) {
+    var byUid = {};
+    (data.heroes || []).forEach(function (h) {
+      if (!h.uid) h.uid = DC.U.uid('hero');
+      (byUid[h.uid] = byUid[h.uid] || []).push(h);
+    });
+    Object.keys(byUid).forEach(function (old) {
+      var group = byUid[old];
+      if (group.length < 2) return;
+      // Les emplacements de groupe citant cet uid sont redistribués dans l'ordre.
+      var slots = [];
+      for (var i = 0; i < 4; i++) if (data.party && data.party[i] === old) slots.push(i);
+      group.forEach(function (h, n) {
+        if (n > 0) h.uid = DC.U.uid('hero');
+        if (slots[n] !== undefined) data.party[slots[n]] = h.uid;
+      });
+      for (var k = group.length; k < slots.length; k++) data.party[slots[k]] = null;
+    });
+
+    // Même traitement pour les objets : un uid dupliqué ferait équiper ou jeter
+    // le mauvais objet depuis le coffre.
+    var seen = {}, all = (data.storage || []).slice();
+    (data.heroes || []).forEach(function (h) {
+      if (!h.equip) return;
+      ['weapon', 'armor', 'accessory'].forEach(function (s) { if (h.equip[s]) all.push(h.equip[s]); });
+    });
+    all.forEach(function (it) {
+      if (!it.uid || seen[it.uid]) it.uid = DC.U.uid(it.kind === 'treasure' ? 'tr' : 'it');
+      seen[it.uid] = true;
+    });
+  }
+
   function load() {
     try {
       var raw = localStorage.getItem(KEY);
@@ -40,6 +78,7 @@ DC.Save = (function () {
       Object.keys(base.settings).forEach(function (k) {
         if (data.settings[k] === undefined) data.settings[k] = base.settings[k];
       });
+      repairIds(data);
       return data;
     } catch (e) {
       console.warn('Sauvegarde illisible :', e);

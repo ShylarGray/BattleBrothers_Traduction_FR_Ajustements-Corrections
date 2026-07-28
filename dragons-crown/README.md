@@ -88,6 +88,53 @@ Reine Harpie, Gorgone, Roi Liche, Kraken, Cyclope de magma, Dragon Ancien. Chaqu
 a trois phases et un jeu d'attaques télégraphées. Quatre difficultés se débloquent en
 progressant, avec un butin, un or et une expérience croissants.
 
+## Choix de game feel
+
+Ces règles sont le résultat d'un audit dédié ; elles expliquent pourquoi certaines
+constantes sont ce qu'elles sont.
+
+**Réactivité.** Les entrées sont lues une fois par image, avant toute logique, et
+mémorisées 8 images : une touche pressée pendant une récupération d'attaque, un
+hitstop ou un état de contrôle volé s'exécute dès que le personnage redevient
+disponible, au lieu d'être perdue. À terre, une pression sur Attaque ou Saut
+déclenche un relevé immédiat plutôt que d'attendre le décompte. L'immobilisation
+après un coup reçu est plafonnée à 20 images, quelle que soit la difficulté.
+
+**Persistance.** Franchir une porte est un point de contrôle : butin, or et besace
+sont versés au profil et écrits sur disque, et l'XP suit automatiquement. Fermer
+l'onglet en plein donjon ne coûte donc jamais plus que la salle en cours. Une
+défaite ne fait perdre que les trouvailles ordinaires de cette dernière salle —
+les pièces épiques et au-delà sont toujours rapportées. Une retraite volontaire
+conserve tout le butin et 80 % de l'or.
+
+**Difficulté.** La défense des monstres ne dépend que du niveau, jamais du
+multiplicateur de difficulté : les paliers annoncés (×1 / ×2,4 / ×5,5 / ×12) sont
+donc exactement ce que le joueur subit, sans explosion cachée. En solo, tomber
+une seconde fois n'interrompt plus l'expédition dans l'image même : un sursis
+d'une seconde et demie permet encore à une fiole de résurrection emportée de
+s'employer d'elle-même.
+
+**Endurance.** Une cible est déséquilibrée quand elle a encaissé une fraction de
+ses PV max depuis sa dernière rupture (22 % pour les joueurs, 15 à 40 % selon le
+monstre). Exprimée en fraction, la valeur reste juste à tous les niveaux et à
+toutes les difficultés : un coup léger n'interrompt plus systématiquement, les
+gros ennemis peuvent riposter, et le joueur n'est plus enchaîné par la piétaille.
+L'équilibre ne se rétablit qu'après deux secondes sans encaisser.
+
+**Patterns.** Une attaque tout juste jouée devient quatre fois moins probable, ce
+qui fait émerger des enchaînements variés et mémorisables. Le délai entre deux
+attaques couvre l'animation *puis* une fenêtre de neutre fixe : bien esquiver
+ouvre toujours la même occasion de punir. Les coups qui projettent ou soulèvent
+sont annoncés par une barre de préparation, sur les boss comme sur les monstres
+ordinaires. Chaque boss garde enfin une attaque en réserve, révélée en phase 2.
+
+**Objets.** ATQ et MAG comptent pour tout le monde — les classes magiques frappent
+surtout avec MAG, les autres surtout avec ATQ, mais aucune ligne de statistique
+affichée sur un objet n'est morte. Les affixes à effet (brûlure, gel, foudre, vol
+de vie, régénération) sont tous branchés en combat. Le coût d'expertise dépend du
+niveau du donjon et non de la valeur de l'objet : le tarif ne trahit plus la
+rareté avant paiement, et identifier redevient un pari.
+
 ## Organisation du code
 
 ```

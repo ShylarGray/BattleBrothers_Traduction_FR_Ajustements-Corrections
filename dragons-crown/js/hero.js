@@ -83,9 +83,10 @@ DC.Hero = (function () {
     mp += (sk.concentration || 0) * 15 + (sk.w_mana || 0) * 20;
     mag *= 1 + (sk.strength || 0) * 0.04;
 
-    // Les classes magiques frappent avec MAG plutôt qu'avec ATK.
+    // Les classes magiques frappent surtout avec MAG, les autres surtout avec ATK,
+    // mais aucune des deux statistiques n'est jamais morte sur une fiche.
     var magical = (cls.id === 'wizard' || cls.id === 'sorceress');
-    var power = magical ? Math.max(atk, mag * 0.85) : atk;
+    var power = magical ? (mag * 0.78 + atk * 0.25) : (atk + mag * 0.20);
 
     return {
       hp: Math.round(hp), mp: Math.round(mp),
