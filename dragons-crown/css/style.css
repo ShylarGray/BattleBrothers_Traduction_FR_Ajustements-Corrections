@@ -75,6 +75,8 @@ html, body {
     radial-gradient(1200px 500px at 50% -10%, rgba(90, 60, 140, 0.25), transparent 70%),
     linear-gradient(180deg, rgba(10, 8, 18, 0.94), rgba(16, 12, 26, 0.97));
   animation: fade .18s ease-out;
+  /* Repli pour les écrans sans rangée d'actions ; ceux qui en ont une passent
+     en mode « split » et confient le défilement à .screen-body. */
   overflow-y: auto;
   overscroll-behavior: contain;
 }
@@ -171,6 +173,21 @@ kbd {
 .scrolly::-webkit-scrollbar { width: 8px; }
 .scrolly::-webkit-scrollbar-track { background: rgba(255, 255, 255, .04); }
 .scrolly::-webkit-scrollbar-thumb { background: #4a3f68; border-radius: 4px; }
+
+/* Corps défilant d'un écran, inséré à l'exécution devant la rangée d'actions.
+   La rangée reste en dehors : elle ne peut donc jamais recouvrir le contenu. */
+.screen-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.screen.split { overflow: hidden; }
+.screen.split > .row-actions { flex: none; margin-top: 0; }
 
 .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; flex: 1; min-height: 0; }
 .col { display: flex; flex-direction: column; min-height: 0; }
@@ -650,7 +667,10 @@ ul.hints b { color: var(--gold); }
  * ==================================================================== */
 @container (max-width: 780px) {
   .town-grid, .class-grid, .stage-grid { grid-template-columns: repeat(2, 1fr); }
-  .cols { grid-template-columns: 1fr; }
+  .slots { grid-template-columns: repeat(2, 1fr); }
+  /* Spécificité alignée sur .roster-screen .cols, sinon la Compagnie reste
+     sur deux colonnes malgré la règle. */
+  .cols, .roster-screen .cols { grid-template-columns: 1fr; }
   .skill-grid { grid-template-columns: 1fr; }
   .res-grid { grid-template-columns: repeat(2, 1fr); }
   .grid-items { grid-template-columns: 1fr; }
@@ -672,18 +692,15 @@ ul.hints b { color: var(--gold); }
   /* Les grilles reprennent leur hauteur naturelle : c'est l'écran qui défile,
      et non chaque liste isolément — bien plus prévisible au doigt. */
   .town-grid, .class-grid, .stage-grid, .slots, .cols, .col { flex: none; }
+  /* Un seul niveau de défilement au doigt : les listes internes cessent de
+     défiler pour leur compte, c'est le corps de l'écran qui porte le geste. */
   .scrolly { overflow: visible; flex: none; min-height: 0; padding-right: 0; }
   .place, .class-card, .stage-card { min-height: 0; }
-  /* Rangée d'actions épinglée, bord à bord : le contenu défile dessous et les
-     boutons de sortie restent toujours sous le pouce. */
+  /* Rangée d'actions bord à bord, toujours visible sous le pouce. */
   .row-actions {
-    position: sticky;
-    bottom: 0;
-    z-index: 5;
     margin: 0 -16px;
-    padding: 9px 16px;
+    padding: 9px 16px 0;
     background: rgba(10, 8, 16, .97);
-    border-top: 1px solid rgba(255, 255, 255, .1);
   }
   .title-screen, .pause-screen { overflow: hidden; }
 }

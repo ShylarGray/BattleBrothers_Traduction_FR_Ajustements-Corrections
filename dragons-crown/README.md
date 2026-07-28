@@ -131,6 +131,13 @@ toutes les difficultés : un coup léger n'interrompt plus systématiquement, le
 gros ennemis peuvent riposter, et le joueur n'est plus enchaîné par la piétaille.
 L'équilibre ne se rétablit qu'après deux secondes sans encaisser.
 
+**Fauchage.** Une attaque touche jusqu'à trois ennemis distincts dans sa boîte
+de frappe — les formes larges (onde, tourbillon, souffle) n'ont pas de limite,
+une prise reste mono-cible. Deux compteurs séparés le rendent possible sans
+rien déséquilibrer : `hits` est le nombre d'impacts sur une *même* cible,
+`cleave` le nombre d'ennemis distincts. Les dégâts subis par une cible isolée,
+un boss notamment, sont donc rigoureusement inchangés.
+
 **Patterns.** Une attaque tout juste jouée devient quatre fois moins probable, ce
 qui fait émerger des enchaînements variés et mémorisables. Le délai entre deux
 attaques couvre l'animation *puis* une fenêtre de neutre fixe : bien esquiver

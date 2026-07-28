@@ -78,7 +78,7 @@ DC.Ent = (function () {
   /* ------------------------------ Attaques ----------------------------- */
   Actor.prototype.startAttack = function (desc, opts) {
     this.act = {
-      d: desc, t: 0, hits: {}, hitCount: 0,
+      d: desc, t: 0, hits: {}, touched: 0,
       total: desc.startup + desc.active + desc.recover,
       opts: opts || {}
     };
@@ -123,22 +123,30 @@ DC.Ent = (function () {
     // Fenêtre active : résolution des impacts
     if (a.t > activeStart && a.t <= activeEnd && d.kind !== 'shot' && d.kind !== 'summon' &&
       d.kind !== 'summonEnemy' && d.kind !== 'heal' && d.kind !== 'rain') {
-      var maxHits = d.hits || 1;
-      if (a.hitCount < maxHits) {
-        var hb = this.attackHitbox();
-        var targets = this.world.actorsHostileTo(this.team);
-        for (var i = 0; i < targets.length; i++) {
-          var t = targets[i];
-          if (t.dead || t.invuln > 0) continue;
-          // Sur les attaques multi-impacts, on autorise un nouveau coup après un délai.
-          var last = a.hits[t.id];
-          if (last !== undefined && a.t - last < Math.max(4, Math.floor(d.active / maxHits))) continue;
-          if (!U.boxOverlap(hb, t.box())) continue;
-          a.hits[t.id] = a.t;
-          a.hitCount++;
-          this.world.resolveHit(this, t, d, a.opts);
-          if (a.hitCount >= maxHits) break;
-        }
+      // `hits` compte les impacts sur UNE MÊME cible pendant la fenêtre active ;
+      // `cleave` limite le nombre d'ennemis distincts fauchés par l'attaque.
+      // Séparer les deux permet à un coup d'épée de traverser plusieurs ennemis
+      // alignés sans rien changer aux dégâts subis par une cible isolée.
+      var perTarget = d.hits || 1;
+      // Les formes larges (onde, tourbillon, souffle) fauchent tout ce qu'elles
+      // couvrent ; une prise reste mono-cible par nature.
+      var wide = (d.kind === 'quake' || d.kind === 'rage' ||
+        d.kind === 'spin' || d.kind === 'breath');
+      var cleave = d.cleave || (d.kind === 'grab' ? 1 : (wide ? 99 : 3));
+      var interval = Math.max(4, Math.floor(d.active / perTarget));
+      var hb = this.attackHitbox();
+      var targets = this.world.actorsHostileTo(this.team);
+      for (var i = 0; i < targets.length; i++) {
+        var t = targets[i];
+        if (t.dead || t.invuln > 0) continue;
+        var rec = a.hits[t.id];
+        if (!rec && a.touched >= cleave) continue;      // quota d'ennemis atteint
+        if (rec && rec.n >= perTarget) continue;        // cette cible a eu son compte
+        if (rec && a.t - rec.last < interval) continue; // cadence entre deux impacts
+        if (!U.boxOverlap(hb, t.box())) continue;
+        if (!rec) { rec = a.hits[t.id] = { n: 0, last: -99 }; a.touched = (a.touched || 0) + 1; }
+        rec.n++; rec.last = a.t;
+        this.world.resolveHit(this, t, d, a.opts);
       }
     }
 
@@ -174,7 +182,10 @@ DC.Ent = (function () {
   Actor.prototype.physics = function () {
     this.x += this.vx; this.z += this.vz; this.y += this.vy;
 
-    if (this.flying && !this.dead) {
+    // Un volant à terre cesse de planer et tombe : sans cela son altitude ne
+    // repasse jamais par zéro, la condition de relèvement n'est jamais
+    // satisfaite, et il reste couché définitivement.
+    if (this.flying && !this.dead && this.state !== 'down') {
       // Vol stationnaire : oscillation autour de la hauteur cible
       var target = this.hoverY;
       this.vy += (target - this.y) * 0.012;
@@ -319,6 +330,10 @@ DC.Ent = (function () {
           if (this.downT > (this.getupTime || 44)) {
             this.state = 'getup'; this.stateT = 0; this.downT = undefined; this.invuln = 20;
           }
+        } else if (this.stateT > 180) {
+          // Reste en l'air trop longtemps (plateforme, projection étrange) :
+          // on relève quand même plutôt que de laisser un acteur figé.
+          this.state = 'getup'; this.stateT = 0; this.downT = undefined; this.invuln = 20;
         }
         break;
       case 'getup':

@@ -194,7 +194,7 @@ DC.UI = (function () {
       '<li>Jouez en <b>mode paysage</b> ; les commandes se masquent d\'elles-mêmes dans les menus.</li>' +
       '<li>Elles s\'activent automatiquement sur un appareil tactile, et se désactivent dans les Options.</li>' +
       '</ul>' +
-      btn('back', 'Retour') + '</div>';
+      '<div class="row-actions">' + btn('back', 'Retour') + '</div></div>';
   }
 
   function screenOptions() {
@@ -207,7 +207,7 @@ DC.UI = (function () {
       '<div class="opt"><label>Commandes tactiles</label>' + btn('toggleTouch', s.touch ? 'Affichées' : 'Masquées') +
       '<span class="muted small">' + (DC.Touch.supported() ? 'Écran tactile détecté' : 'Utile sur écran tactile') + '</span></div>' +
       '<div class="opt"><label>Sauvegarde</label>' + btn('exportSave', 'Exporter') + btn('importSave', 'Importer') + '</div>' +
-      btn('back', 'Retour') + '</div>';
+      '<div class="row-actions">' + btn('back', 'Retour') + '</div></div>';
   }
 
   /* ============================== ROSTER =============================== */
@@ -657,6 +657,29 @@ DC.UI = (function () {
     else show('title');
   }
 
+  /**
+   * Isole le contenu défilant de la rangée d'actions : celle-ci sort du flux
+   * de défilement au lieu d'y flotter. `position: sticky` dans un conteneur
+   * qui défile se comporte différemment selon le moteur de rendu — sous WebKit
+   * la barre se retrouvait au milieu de l'écran, par-dessus le contenu.
+   * Cette structure ne dépend d'aucune subtilité : un bloc qui défile, un bloc
+   * qui ne défile pas.
+   */
+  function splitScrollBody() {
+    var scr = root.querySelector('.screen');
+    if (!scr) return;
+    var actions = null, i;
+    for (i = 0; i < scr.children.length; i++) {
+      if (scr.children[i].classList.contains('row-actions')) { actions = scr.children[i]; break; }
+    }
+    if (!actions) return;
+    var body = document.createElement('div');
+    body.className = 'screen-body';
+    while (scr.firstChild && scr.firstChild !== actions) body.appendChild(scr.firstChild);
+    scr.insertBefore(body, actions);
+    scr.classList.add('split');
+  }
+
   function render() {
     // Une boîte de dialogue peut survivre à la fermeture de l'écran (pause →
     // retraite confirmée), on la rend donc même sans écran courant.
@@ -669,10 +692,11 @@ DC.UI = (function () {
     }
     var fn = SCREENS[current];
     root.innerHTML = (fn ? fn() : '') + modalHtml();
+    splitScrollBody();
     root.classList.add('active');
     root.classList.toggle('overlay', current === 'pause');
-    // Restaure la position de défilement de la liste
-    var sc = root.querySelector('.scrolly');
+    // Restaure la position de défilement (liste interne, ou corps de l'écran)
+    var sc = root.querySelector('.scrolly') || root.querySelector('.screen-body');
     if (sc && scroll[current] !== undefined) sc.scrollTop = scroll[current];
     if (modal) focusModal();
   }
@@ -1026,7 +1050,7 @@ DC.UI = (function () {
     if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return;
     // Tant qu'une boîte de dialogue est ouverte, elle capte tous les clics.
     if (modal && act !== 'modalOk' && act !== 'modalCancel') return;
-    var sc = root.querySelector('.scrolly');
+    var sc = root.querySelector('.scrolly') || root.querySelector('.screen-body');
     if (sc) scroll[current] = sc.scrollTop;
     var fn = ACTIONS[act];
     if (fn) { DC.Audio.play('menu', 0.4); fn(arg, el, e); }

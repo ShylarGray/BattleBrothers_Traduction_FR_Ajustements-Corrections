@@ -260,7 +260,7 @@ DC.World = (function () {
   /* ======================= Techniques particulières ==================== */
   World.prototype.grabThrow = function (player, target, desc) {
     player.state = 'attack';
-    player.act = { d: desc, t: 0, hits: {}, hitCount: 99, total: desc.startup + desc.active + desc.recover, opts: {} };
+    player.act = { d: desc, t: 0, hits: {}, touched: 99, total: desc.startup + desc.active + desc.recover, opts: {} };
     var dir = player.facing;
     var self = this;
     target.vx = dir * 11; target.vy = 8; target.state = 'down'; target.stateT = 0; target.downT = undefined;
