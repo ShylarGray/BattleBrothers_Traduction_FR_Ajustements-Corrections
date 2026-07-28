@@ -38,6 +38,7 @@ DC.Game = (function () {
     var s = this.profile.settings;
     if (s.touch === undefined) s.touch = DC.Touch.supported();
     DC.Touch.init(document.getElementById('app'), { enabled: s.touch, slot: 0 });
+    this.initFullscreen();
     DC.Hero.setBlessings(this.profile.blessings || {});
     DC.Audio.setVolumes(this.profile.settings);
 
@@ -75,6 +76,76 @@ DC.Game = (function () {
     DC.UI.show('title');
     this.last = performance.now();
     requestAnimationFrame(function (t) { self.loop(t); });
+  };
+
+  /* ============================ Plein écran ============================ */
+  /* L'API n'est pas toujours disponible : iOS ne la propose que pour les
+   * vidéos, et une iframe doit y être explicitement autorisée. Un bouton
+   * inerte serait pire que pas de bouton — on le masque dans ces cas. */
+  Game.prototype.fullscreenAvailable = function () {
+    var el = document.documentElement;
+    if (!(el.requestFullscreen || el.webkitRequestFullscreen)) return false;
+    // false explicite = interdit (iframe sans autorisation) ; undefined = ancien navigateur.
+    return document.fullscreenEnabled !== false && document.webkitFullscreenEnabled !== false;
+  };
+
+  Game.prototype.isFullscreen = function () {
+    return !!(document.fullscreenElement || document.webkitFullscreenElement);
+  };
+
+  Game.prototype.toggleFullscreen = function () {
+    var self = this, el = document.documentElement;
+    try {
+      if (this.isFullscreen()) {
+        var exit = document.exitFullscreen || document.webkitExitFullscreen;
+        if (exit) exit.call(document);
+      } else {
+        var enter = el.requestFullscreen || el.webkitRequestFullscreen;
+        if (!enter) return;
+        var res = enter.call(el);
+        if (res && res.then) {
+          res.then(function () {
+            // Sur mobile, le paysage donne bien plus de place à l'action.
+            if (window.screen && screen.orientation && screen.orientation.lock) {
+              try { screen.orientation.lock('landscape').catch(function () { }); } catch (e) { /* refusé : sans conséquence */ }
+            }
+          }, function () {
+            DC.UI.toast('Le plein écran a été refusé par le navigateur.');
+            self.syncFullscreen();
+          });
+        }
+      }
+    } catch (e) {
+      DC.UI.toast('Plein écran indisponible ici.');
+    }
+  };
+
+  Game.prototype.syncFullscreen = function () {
+    var btn = document.getElementById('fullscreen-btn');
+    if (!btn) return;
+    var full = this.isFullscreen();
+    btn.classList.toggle('on', full);
+    var label = full ? 'Quitter le plein écran' : 'Passer en plein écran';
+    btn.setAttribute('aria-label', label);
+    btn.title = label;
+    btn.classList.toggle('playing', this.state === 'playing');
+  };
+
+  Game.prototype.initFullscreen = function () {
+    var self = this;
+    var btn = document.getElementById('fullscreen-btn');
+    if (!btn || !this.fullscreenAvailable()) return;
+    btn.hidden = false;
+    btn.addEventListener('click', function () { self.toggleFullscreen(); });
+    var onChange = function () {
+      self.syncFullscreen();
+      // Les dimensions ne sont pas fiables dans l'image du changement.
+      self.resize();
+      [60, 220].forEach(function (d) { setTimeout(function () { self.resize(); }, d); });
+    };
+    document.addEventListener('fullscreenchange', onChange);
+    document.addEventListener('webkitfullscreenchange', onChange);
+    this.syncFullscreen();
   };
 
   Game.prototype.resize = function () {
@@ -280,6 +351,7 @@ DC.Game = (function () {
   Game.prototype.draw = function () {
     var ctx = this.ctx;
     DC.Touch.setVisible(this.state === 'playing' && !!this.world);
+    if (this._fsState !== this.state) { this._fsState = this.state; this.syncFullscreen(); }
     ctx.save();
     ctx.clearRect(0, 0, VIEW_W, VIEW_H);
     if (this.world && (this.state === 'playing' || this.state === 'paused')) {

@@ -46,6 +46,12 @@ masquer un ennemi qui arrive, et le multi-touch permet de se déplacer en frappa
 Jouez en mode paysage — le jeu invite à tourner l'appareil en portrait. Le tout se
 désactive dans *Options → Commandes tactiles*.
 
+Un bouton **plein écran** se trouve en haut à droite des menus, et dans le menu
+de pause en cours de partie. Il n'apparaît que si le navigateur l'autorise
+réellement : iOS ne propose l'API que pour les vidéos, et une page intégrée dans
+une iframe inter-origine doit y être explicitement autorisée. Sur mobile,
+l'activation tente aussi de verrouiller l'orientation en paysage.
+
 Techniques communes à toutes les classes :
 
 - **Combo** : appuis répétés sur Attaque (2 à 4 coups selon la classe).

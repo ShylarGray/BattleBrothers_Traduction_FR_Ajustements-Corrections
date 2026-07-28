@@ -204,6 +204,11 @@ DC.UI = (function () {
       '<div class="opt"><label>Volume de la musique</label><input type="range" min="0" max="1" step="0.05" value="' + s.music + '" data-act="setMusic"><span>' + Math.round(s.music * 100) + ' %</span></div>' +
       '<div class="opt"><label>Nombres de dégâts</label>' + btn('toggle', s.showDamage ? 'Activés' : 'Désactivés', 'showDamage') + '</div>' +
       '<div class="opt"><label>Secousses d\'écran</label>' + btn('toggle', s.screenShake ? 'Activées' : 'Désactivées', 'screenShake') + '</div>' +
+      (game.fullscreenAvailable()
+        ? '<div class="opt"><label>Affichage</label>' +
+        btn('toggleFullscreen', game.isFullscreen() ? 'Quitter le plein écran' : 'Passer en plein écran') +
+        '<span class="muted small">Récupère la place prise par le navigateur</span></div>'
+        : '') +
       '<div class="opt"><label>Commandes tactiles</label>' + btn('toggleTouch', s.touch ? 'Affichées' : 'Masquées') +
       '<span class="muted small">' + (DC.Touch.supported() ? 'Écran tactile détecté' : 'Utile sur écran tactile') + '</span></div>' +
       '<div class="opt"><label>Sauvegarde</label>' + btn('exportSave', 'Exporter') + btn('importSave', 'Importer') + '</div>' +
@@ -627,6 +632,9 @@ DC.UI = (function () {
     return '<div class="screen pause-screen"><div class="pause-box">' +
       '<h1>Pause</h1>' +
       btn('resume', 'Reprendre', null, 'big primary') +
+      (game.fullscreenAvailable()
+        ? btn('toggleFullscreen', game.isFullscreen() ? 'Quitter le plein écran' : 'Plein écran')
+        : '') +
       btn('controls', 'Commandes') +
       btn('options', 'Options') +
       btn('abandon', 'Battre en retraite', null, 'danger') +
@@ -992,6 +1000,11 @@ DC.UI = (function () {
       var s = game.profile.settings;
       s[key] = !s[key];
       game.saveProfile(); render();
+    },
+    toggleFullscreen: function () {
+      game.toggleFullscreen();
+      // L'état ne bascule qu'après l'évènement du navigateur : on redessine alors.
+      setTimeout(function () { if (current) render(); }, 250);
     },
     toggleTouch: function () {
       var s = game.profile.settings;
