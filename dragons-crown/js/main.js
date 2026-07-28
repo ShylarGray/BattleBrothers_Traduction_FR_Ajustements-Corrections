@@ -51,7 +51,23 @@ DC.Game = (function () {
     window.addEventListener('pointerdown', unlock);
     window.addEventListener('keydown', unlock);
 
-    window.addEventListener('resize', function () { self.resize(); });
+    // Le changement d'orientation ne produit pas toujours un « resize », et les
+    // dimensions ne sont pas fiables immédiatement après : on remesure plusieurs
+    // fois, ce qui coûte trois appels et évite un cadrage figé sur l'ancien format.
+    var remeasure = function () {
+      self.resize();
+      [60, 200, 500].forEach(function (d) { setTimeout(function () { self.resize(); }, d); });
+    };
+    window.addEventListener('resize', remeasure);
+    window.addEventListener('orientationchange', remeasure);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', function () { self.resize(); });
+    }
+    // Un panneau redimensionné par la page hôte n'émet aucun évènement fenêtre.
+    if (window.ResizeObserver) {
+      new ResizeObserver(function () { self.resize(); })
+        .observe(document.getElementById('stage-wrap'));
+    }
     this.resize();
 
     DC.Input.onKeyDown(function (code) { self.onKey(code); });
@@ -63,11 +79,22 @@ DC.Game = (function () {
 
   Game.prototype.resize = function () {
     var wrap = document.getElementById('app');
-    var sw = window.innerWidth, sh = window.innerHeight;
+    // visualViewport donne la zone réellement visible sur mobile, barres
+    // d'outils déduites ; innerWidth/innerHeight la surestiment souvent.
+    var vv = window.visualViewport;
+    var sw = (vv && vv.width) || window.innerWidth;
+    var sh = (vv && vv.height) || window.innerHeight;
     var scale = Math.min(sw / VIEW_W, sh / VIEW_H);
     wrap.style.width = VIEW_W + 'px';
     wrap.style.height = VIEW_H + 'px';
     wrap.style.transform = 'translate(-50%, -50%) scale(' + scale + ')';
+
+    // Les menus sont dans le cadre du jeu, donc réduits avec lui. En dessous
+    // d'une certaine échelle ils deviennent illisibles et intouchables : on les
+    // contre-agrandit pour garder une taille utile, sans jamais les grossir
+    // au-delà du rendu prévu sur grand écran.
+    var boost = U.clamp(0.62 / Math.max(scale, 0.01), 1, 1.9);
+    wrap.style.setProperty('--ui-boost', boost.toFixed(3));
   };
 
   Game.prototype.onKey = function (code) {

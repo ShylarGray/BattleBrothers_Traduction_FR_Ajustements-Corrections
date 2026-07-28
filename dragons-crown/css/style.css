@@ -50,6 +50,16 @@ html, body {
   inset: 0;
   display: none;
   overflow: hidden;
+  /* Contre-agrandissement piloté par le script : sur un petit écran, le jeu est
+     réduit si fort que les menus deviendraient illisibles. On les redimensionne
+     à l'inverse, et on compense la taille pour continuer à couvrir la zone. */
+  transform-origin: top left;
+  transform: scale(var(--ui-boost, 1));
+  width: calc(100% / var(--ui-boost, 1));
+  height: calc(100% / var(--ui-boost, 1));
+  /* Les requêtes de conteneur réagissent à cette largeur logique, pas au
+     viewport : les grilles se réorganisent même à travers la mise à l'échelle. */
+  container-type: size;
 }
 #ui.active { display: block; }
 #ui.overlay { background: rgba(4, 3, 8, 0.55); }
@@ -65,6 +75,8 @@ html, body {
     radial-gradient(1200px 500px at 50% -10%, rgba(90, 60, 140, 0.25), transparent 70%),
     linear-gradient(180deg, rgba(10, 8, 18, 0.94), rgba(16, 12, 26, 0.97));
   animation: fade .18s ease-out;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
@@ -593,33 +605,94 @@ ul.hints b { color: var(--gold); }
 
 /* Invitation à passer en paysage : en portrait le jeu tient sur une bande
    trop étroite pour rester lisible. */
+/* Bandeau d'information seulement. `pointer-events: none` est essentiel :
+   un voile plein écran interceptait les appuis et rendait les menus
+   inaccessibles dès que le cadre était plus haut que large. */
 #rotate-hint {
   position: fixed;
-  inset: 0;
+  left: 50%;
+  top: 10px;
+  transform: translateX(-50%);
   z-index: 90;
   display: none;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 14px;
-  padding: 30px;
-  text-align: center;
-  background: linear-gradient(180deg, #0c0a16, #241a30);
-  color: var(--text);
+  gap: 8px;
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(10, 8, 16, .92);
+  color: #cfc8e2;
+  font-size: 13px;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: hint-fade 7s ease-in forwards;
 }
-#rotate-hint .rh-icon {
-  font-size: 54px;
-  animation: rotate-nudge 2.2s ease-in-out infinite;
+#rotate-hint b { color: var(--gold); }
+#rotate-hint .rh-icon { font-size: 17px; }
+@keyframes hint-fade {
+  0%, 78% { opacity: 1; }
+  100% { opacity: 0; visibility: hidden; }
 }
-#rotate-hint h2 { color: var(--gold); font-size: 17px; letter-spacing: .1em; }
-#rotate-hint p { font-size: 14px; color: #cfc8e2; max-width: 30ch; line-height: 1.5; }
-@keyframes rotate-nudge {
-  0%, 45%, 100% { transform: rotate(0deg); }
-  60%, 85% { transform: rotate(90deg); }
-}
-@media (pointer: coarse) and (orientation: portrait) {
+/* Déclenché par la forme réelle du cadre, pas par l'orientation de l'appareil :
+   dans une iframe, les deux n'ont rien à voir. */
+@media (pointer: coarse) and (max-aspect-ratio: 9/10) {
   #rotate-hint { display: flex; }
 }
 @media (prefers-reduced-motion: reduce) {
-  #rotate-hint .rh-icon { animation: none; }
+  #rotate-hint { animation: none; }
+}
+
+
+/* ======================================================================
+ * Menus : réorganisation selon la place réellement disponible.
+ * Basé sur la largeur du calque UI (requête de conteneur), donc valable
+ * aussi bien sur un téléphone que dans un panneau étroit.
+ * ==================================================================== */
+@container (max-width: 780px) {
+  .town-grid, .class-grid, .stage-grid { grid-template-columns: repeat(2, 1fr); }
+  .cols { grid-template-columns: 1fr; }
+  .skill-grid { grid-template-columns: 1fr; }
+  .res-grid { grid-template-columns: repeat(2, 1fr); }
+  .grid-items { grid-template-columns: 1fr; }
+  .screen { padding: 14px 16px; }
+  .cc-blurb { min-height: 0; }
+}
+
+/* Dès que le cadre est étroit ou bas, l'écran entier défile d'un seul bloc.
+   Attention : @container n'accepte pas la virgule comme « ou » — contrairement
+   à @media. Une liste séparée par des virgules rend toute la règle invalide.
+   Sans cela le contenu était simplement coupé : les dernières entrées de la
+   ville et la rangée de boutons devenaient inatteignables. */
+@container (max-width: 780px) or (max-height: 500px) {
+  .screen {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  /* Les grilles reprennent leur hauteur naturelle : c'est l'écran qui défile,
+     et non chaque liste isolément — bien plus prévisible au doigt. */
+  .town-grid, .class-grid, .stage-grid, .slots, .cols, .col { flex: none; }
+  .scrolly { overflow: visible; flex: none; min-height: 0; padding-right: 0; }
+  .place, .class-card, .stage-card { min-height: 0; }
+  /* Rangée d'actions épinglée, bord à bord : le contenu défile dessous et les
+     boutons de sortie restent toujours sous le pouce. */
+  .row-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    margin: 0 -16px;
+    padding: 9px 16px;
+    background: rgba(10, 8, 16, .97);
+    border-top: 1px solid rgba(255, 255, 255, .1);
+  }
+  .title-screen, .pause-screen { overflow: hidden; }
+}
+@container (max-width: 520px) {
+  .town-grid, .class-grid, .stage-grid, .slots { grid-template-columns: 1fr; }
+  .recruit-bar { flex-wrap: wrap; }
+  .recruit-bar input[type=text] { width: 100%; }
+  .recruit-hint { flex-basis: 100%; }
+  .logo .l1 { font-size: 30px; }
+  .logo .l2 { font-size: 42px; }
+  .title-screen .foot { font-size: 12px; }
 }

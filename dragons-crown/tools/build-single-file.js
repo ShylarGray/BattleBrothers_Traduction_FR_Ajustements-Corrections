@@ -61,10 +61,13 @@ const body = (indexHtml.match(/<body>([\s\S]*?)<\/body>/) || [, ''])[1]
   .replace(/<script[\s\S]*?<\/script>/gi, '')
   .trim();
 
-// La déclaration d'encodage doit être dans le premier kilo-octet du document,
-// sinon le navigateur l'ignore. Sans elle, un serveur qui n'annonce pas de
-// charset fait lire l'UTF-8 comme du Latin-1 : « héros » devient « hÃ©ros ».
+// Deux métadonnées indispensables, à placer dans le premier kilo-octet.
+//  - charset : sans lui, un serveur qui n'annonce pas d'encodage fait lire
+//    l'UTF-8 comme du Latin-1 (« héros » devient « hÃ©ros »).
+//  - viewport : sans lui, un téléphone rend la page dans une fenêtre virtuelle
+//    de 980 px puis dézoome — le jeu ne se cale plus sur l'écran.
 const page = `<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>${title}</title>
 <style>
 ${css}
