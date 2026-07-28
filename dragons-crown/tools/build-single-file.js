@@ -61,7 +61,11 @@ const body = (indexHtml.match(/<body>([\s\S]*?)<\/body>/) || [, ''])[1]
   .replace(/<script[\s\S]*?<\/script>/gi, '')
   .trim();
 
-const page = `<title>${title}</title>
+// La déclaration d'encodage doit être dans le premier kilo-octet du document,
+// sinon le navigateur l'ignore. Sans elle, un serveur qui n'annonce pas de
+// charset fait lire l'UTF-8 comme du Latin-1 : « héros » devient « hÃ©ros ».
+const page = `<meta charset="utf-8">
+<title>${title}</title>
 <style>
 ${css}
 </style>

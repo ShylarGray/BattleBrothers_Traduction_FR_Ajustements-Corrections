@@ -70,6 +70,62 @@ DC.UI = (function () {
       '</div>';
   }
 
+  /* ------------------------ Boîtes de dialogue ------------------------ */
+  /* Les dialogues natifs (confirm / prompt) sont purement ignorés dès que la
+   * page est servie dans une iframe cloisonnée : prompt() renvoie null et
+   * confirm() renvoie false, ce qui annule silencieusement l'action demandée.
+   * On les remplace donc par des boîtes rendues dans la page elle-même. */
+  var modal = null;
+
+  function askConfirm(title, body, onOk, opts) {
+    opts = opts || {};
+    modal = {
+      kind: 'confirm', title: title, body: body || '',
+      okLabel: opts.okLabel || 'Confirmer', danger: !!opts.danger, onOk: onOk
+    };
+    render();
+  }
+
+  function askText(title, body, value, onOk, opts) {
+    opts = opts || {};
+    modal = {
+      kind: 'text', title: title, body: body || '', value: value || '',
+      okLabel: opts.okLabel || 'Valider', long: !!opts.long,
+      readonly: !!opts.readonly, onOk: onOk
+    };
+    render();
+  }
+
+  function modalHtml() {
+    if (!modal) return '';
+    var field = '';
+    if (modal.kind === 'text') {
+      field = modal.long
+        ? '<textarea class="modal-input" id="modalField" rows="4" spellcheck="false"' +
+        (modal.readonly ? ' readonly' : '') + '>' + esc(modal.value) + '</textarea>'
+        : '<input class="modal-input" id="modalField" type="text" maxlength="24" value="' + esc(modal.value) + '">';
+    }
+    return '<div class="modal-backdrop">' +
+      '<div class="modal" role="dialog" aria-modal="true">' +
+      '<h2>' + esc(modal.title) + '</h2>' +
+      (modal.body ? '<p class="modal-body">' + modal.body + '</p>' : '') +
+      field +
+      '<div class="modal-actions">' +
+      btn('modalCancel', 'Annuler') +
+      btn('modalOk', modal.okLabel, null, modal.danger ? 'danger' : 'primary') +
+      '</div></div></div>';
+  }
+
+  function closeModal(accept) {
+    if (!modal) return;
+    var m = modal;
+    var field = root.querySelector('#modalField');
+    var val = field ? field.value : null;
+    modal = null;
+    if (accept && m.onOk) m.onOk(val);
+    else render();
+  }
+
   function heroSummary(hero) {
     var cls = Cl.get(hero.classId);
     var st = H.effectiveStats(hero);
@@ -185,8 +241,13 @@ DC.UI = (function () {
   }
 
   function screenNewHero() {
+    var picked = params.pickedClass || null;
     var cards = Cl.all().map(function (c) {
-      return '<div class="class-card" data-act="createHero" data-arg="' + c.id + '" style="--cc:' + c.palette.accent + '">' +
+      var on = c.id === picked;
+      return '<div class="class-card' + (on ? ' sel' : '') + '" data-act="selectClass" data-arg="' + c.id + '"' +
+        ' style="--cc:' + c.palette.accent + '" role="button" tabindex="0"' +
+        ' aria-pressed="' + (on ? 'true' : 'false') + '">' +
+        (on ? '<div class="cc-check">✔ sélectionné</div>' : '') +
         '<div class="cc-name">' + c.name + '</div>' +
         '<div class="cc-role">' + c.role + ' · difficulté ' + '★'.repeat(c.diff) + '</div>' +
         '<div class="cc-blurb">' + c.blurb + '</div>' +
@@ -196,8 +257,24 @@ DC.UI = (function () {
         '<div class="cc-pass">' + c.passive + '</div>' +
         '</div>';
     }).join('');
+
+    var cls = picked ? Cl.get(picked) : null;
+    var nameRow = '<div class="recruit-bar">' +
+      '<label for="heroName">Nom</label>' +
+      '<input id="heroName" type="text" maxlength="24" data-act="heroName" autocomplete="off"' +
+      ' placeholder="' + (cls ? 'Nom de votre ' + cls.name.toLowerCase() : 'Choisissez d\'abord une classe') + '"' +
+      ' value="' + esc(params.heroName || '') + '"' + (picked ? '' : ' disabled') + '>' +
+      btn('rerollName', '🎲 Autre nom', null, 'small', !picked) +
+      '<span class="recruit-hint">' +
+      (picked ? 'Prêt à recruter : <b>' + cls.name + '</b>' : 'Cliquez une classe ci-dessus pour la sélectionner') +
+      '</span>' +
+      btn('confirmHero', '✔ Valider le recrutement', null, 'big primary', !picked) +
+      '</div>';
+
     return '<div class="screen panel-screen wide"><h1>Recruter un héros</h1>' +
-      '<div class="class-grid">' + cards + '</div>' + btn('roster', 'Retour') + '</div>';
+      '<div class="class-grid">' + cards + '</div>' +
+      nameRow +
+      '<div class="row-actions">' + btn('roster', 'Retour') + '</div></div>';
   }
 
   /* =============================== VILLE =============================== */
@@ -571,14 +648,30 @@ DC.UI = (function () {
   }
 
   function render() {
-    if (!current) { root.innerHTML = ''; root.classList.remove('active'); return; }
+    // Une boîte de dialogue peut survivre à la fermeture de l'écran (pause →
+    // retraite confirmée), on la rend donc même sans écran courant.
+    if (!current) {
+      root.innerHTML = modalHtml();
+      root.classList.toggle('active', !!modal);
+      root.classList.toggle('overlay', !!modal);
+      if (modal) focusModal();
+      return;
+    }
     var fn = SCREENS[current];
-    root.innerHTML = fn ? fn() : '';
+    root.innerHTML = (fn ? fn() : '') + modalHtml();
     root.classList.add('active');
     root.classList.toggle('overlay', current === 'pause');
     // Restaure la position de défilement de la liste
     var sc = root.querySelector('.scrolly');
     if (sc && scroll[current] !== undefined) sc.scrollTop = scroll[current];
+    if (modal) focusModal();
+  }
+
+  function focusModal() {
+    var f = root.querySelector('#modalField');
+    if (f) { f.focus(); if (!f.readOnly) f.select(); return; }
+    var ok = root.querySelector('[data-act="modalOk"]');
+    if (ok) ok.focus();
   }
 
   function hide() { current = null; render(); }
@@ -607,14 +700,29 @@ DC.UI = (function () {
     town: function () { game.saveProfile(); stack.length = 0; show('town'); },
     controls: function () { show('controls'); },
     options: function () { show('options'); },
-    newHeroAsk: function () { show('newHero'); },
+    newHeroAsk: function () { show('newHero', {}); },
 
-    createHero: function (classId) {
+    selectClass: function (classId) {
+      params.pickedClass = classId;
+      // Le nom saisi à la main est préservé si l'on change d'avis sur la classe.
+      if (!params.nameEdited) params.heroName = U.rnd.pick(H.NAMES[classId] || ['Aventurier']);
+      render();
+    },
+    rerollName: function () {
+      if (!params.pickedClass) return;
+      params.heroName = U.rnd.pick(H.NAMES[params.pickedClass] || ['Aventurier']);
+      params.nameEdited = false;
+      render();
+    },
+    confirmHero: function () {
+      if (!params.pickedClass) { toast('Sélectionnez d\'abord une classe.'); return; }
+      ACTIONS.createHero(params.pickedClass, params.heroName);
+    },
+
+    createHero: function (classId, rawName) {
       var p = game.profile;
       if (p.heroes.length >= 8) { toast('La compagnie est complète (8 héros).'); return; }
-      var name = prompt('Nom du héros ?', U.rnd.pick(H.NAMES[classId]));
-      if (name === null) return;
-      var hero = H.create(classId, (name || '').trim() || undefined);
+      var hero = H.create(classId, (rawName || '').trim() || undefined);
       // Équipement de départ, déjà identifié.
       var w = DC.Loot.makeItem({ slot: 'weapon', level: 1, rng: U.rnd, wtype: Cl.get(classId).weapon, appraised: true, rarity: 'common' });
       var a = DC.Loot.makeItem({ slot: 'armor', level: 1, rng: U.rnd, appraised: true, rarity: 'common' });
@@ -630,10 +738,15 @@ DC.UI = (function () {
     },
     deleteHero: function (uid) {
       var p = game.profile;
-      if (!confirm('Renvoyer définitivement ce héros ?')) return;
-      p.heroes = p.heroes.filter(function (h) { return h.uid !== uid; });
-      p.party = p.party.map(function (u) { return u === uid ? null : u; });
-      game.saveProfile(); render();
+      var hero = p.heroes.filter(function (h) { return h.uid === uid; })[0];
+      if (!hero) return;
+      askConfirm('Renvoyer ' + hero.name + ' ?',
+        'Ce héros de niveau ' + hero.level + ' et son équipement porté seront perdus définitivement.',
+        function () {
+          p.heroes = p.heroes.filter(function (h) { return h.uid !== uid; });
+          p.party = p.party.map(function (u) { return u === uid ? null : u; });
+          game.saveProfile(); render();
+        }, { okLabel: 'Renvoyer', danger: true });
     },
     pickHero: function (uid) {
       var p = game.profile;
@@ -776,11 +889,15 @@ DC.UI = (function () {
       var p = game.profile;
       if (p.gold < 500) return;
       var hero = p.heroes.filter(function (h) { return h.uid === uid; })[0];
-      if (!hero || !confirm('Réinitialiser toutes les compétences de ' + hero.name + ' pour 500 or ?')) return;
-      p.gold -= 500;
-      var back = H.respec(hero);
-      toast(back + ' point(s) rendus.');
-      game.saveProfile(); render();
+      if (!hero) return;
+      askConfirm('Réinitialiser les compétences de ' + hero.name + ' ?',
+        'Tous les points dépensés lui seront rendus, pour 500 or.',
+        function () {
+          p.gold -= 500;
+          var back = H.respec(hero);
+          toast(back + ' point(s) rendus.');
+          game.saveProfile(); render();
+        }, { okLabel: 'Réinitialiser (500 or)', danger: true });
     },
 
     /* ---- Coffre ---- */
@@ -826,11 +943,16 @@ DC.UI = (function () {
     /* ---- Divers ---- */
     saveNow: function () { game.saveProfile(); toast('Partie sauvegardée.'); },
     wipeAsk: function () {
-      if (!confirm('Effacer définitivement la sauvegarde ?')) return;
-      DC.Save.wipe();
-      game.profile = DC.Save.fresh();
-      toast('Sauvegarde effacée.');
-      show('title');
+      askConfirm('Effacer la sauvegarde ?',
+        'Héros, or, coffre et progression seront perdus. Cette action est irréversible.',
+        function () {
+          DC.Save.wipe();
+          game.profile = DC.Save.fresh();
+          DC.Hero.setBlessings({});
+          toast('Sauvegarde effacée.');
+          stack.length = 0;
+          show('title');
+        }, { okLabel: 'Tout effacer', danger: true });
     },
     toggle: function (key) {
       var s = game.profile.settings;
@@ -838,23 +960,30 @@ DC.UI = (function () {
       game.saveProfile(); render();
     },
     exportSave: function () {
-      var str = DC.Save.exportString(game.profile);
-      window.prompt('Copiez ce code de sauvegarde :', str);
+      askText('Code de sauvegarde', 'Copiez ce texte et conservez-le : il restaure la totalité de votre progression.',
+        DC.Save.exportString(game.profile), function () { render(); },
+        { long: true, readonly: true, okLabel: 'Fermer' });
     },
     importSave: function () {
-      var str = window.prompt('Collez un code de sauvegarde :', '');
-      if (!str) return;
-      var data = DC.Save.importString(str);
-      if (!data) { toast('Code invalide.'); return; }
-      game.profile = data;
-      game.saveProfile();
-      toast('Sauvegarde importée.');
-      show('title');
+      askText('Importer une sauvegarde', 'Collez ici un code de sauvegarde. Votre progression actuelle sera remplacée.',
+        '', function (str) {
+          var data = DC.Save.importString(str || '');
+          if (!data) { toast('Code invalide.'); return; }
+          game.profile = data;
+          DC.Hero.setBlessings(data.blessings || {});
+          game.saveProfile();
+          toast('Sauvegarde importée.');
+          stack.length = 0;
+          show('title');
+        }, { long: true, okLabel: 'Importer' });
     },
+    modalOk: function () { closeModal(true); },
+    modalCancel: function () { closeModal(false); },
     resume: function () { game.resume(); },
     abandon: function () {
-      if (!confirm('Battre en retraite ? Vous gardez tout le butin ; 20 % de l\'or de la salle en cours est perdu.')) return;
-      game.abandonRun();
+      askConfirm('Battre en retraite ?',
+        'Vous conservez tout le butin déjà ramassé ; 20 % de l\'or de la salle en cours reste sur place.',
+        function () { game.abandonRun(); }, { okLabel: 'Battre en retraite', danger: true });
     }
   };
 
@@ -878,7 +1007,9 @@ DC.UI = (function () {
     if (!el || el.disabled) return;
     var act = el.getAttribute('data-act');
     var arg = el.getAttribute('data-arg');
-    if (el.tagName === 'INPUT') return;
+    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return;
+    // Tant qu'une boîte de dialogue est ouverte, elle capte tous les clics.
+    if (modal && act !== 'modalOk' && act !== 'modalCancel') return;
     var sc = root.querySelector('.scrolly');
     if (sc) scroll[current] = sc.scrollTop;
     var fn = ACTIONS[act];
@@ -889,6 +1020,12 @@ DC.UI = (function () {
     var el = e.target;
     var act = el.getAttribute && el.getAttribute('data-act');
     if (!act) return;
+    if (act === 'heroName') {
+      // Pas de re-rendu ici : cela viderait le champ en cours de frappe.
+      params.heroName = el.value;
+      params.nameEdited = true;
+      return;
+    }
     var s = game.profile.settings;
     if (act === 'setSfx') s.sfx = parseFloat(el.value);
     if (act === 'setMusic') s.music = parseFloat(el.value);
@@ -898,11 +1035,27 @@ DC.UI = (function () {
     if (span) span.textContent = Math.round(parseFloat(el.value) * 100) + ' %';
   }
 
+  function onKeyDown(e) {
+    if (modal) {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeModal(false); }
+      else if (e.key === 'Enter' && !(e.target.tagName === 'TEXTAREA' && e.shiftKey)) {
+        e.preventDefault(); e.stopPropagation(); closeModal(true);
+      }
+      return;
+    }
+    // Sur l'écran de recrutement, Entrée depuis le champ de nom vaut « Valider ».
+    if (current === 'newHero' && e.key === 'Enter' && params.pickedClass) {
+      e.preventDefault();
+      ACTIONS.confirmHero();
+    }
+  }
+
   function init(g) {
     game = g;
     root = document.getElementById('ui');
     root.addEventListener('click', onClick);
     root.addEventListener('input', onInput);
+    root.addEventListener('keydown', onKeyDown);
   }
 
   return {

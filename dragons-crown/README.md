@@ -135,6 +135,32 @@ de vie, régénération) sont tous branchés en combat. Le coût d'expertise dé
 niveau du donjon et non de la valeur de l'objet : le tarif ne trahit plus la
 rareté avant paiement, et identifier redevient un pari.
 
+## Distribuer le jeu en un seul fichier
+
+```bash
+node tools/build-single-file.js            # produit couronne-du-dragon.html
+```
+
+Le script lit l'ordre de chargement directement dans `index.html` — un fichier
+ajouté au jeu ne peut donc pas être oublié — et fusionne la feuille de style et
+les scripts dans une page unique, sans aucune référence externe. Le résultat
+s'ouvre par double-clic, se pose sur n'importe quel hébergeur statique, ou
+s'intègre dans une iframe.
+
+Deux contraintes de ce contexte sont traitées dans le code lui-même :
+
+- **Encodage.** La page fusionnée déclare `<meta charset="utf-8">` en tout
+  premier octet. Sans cette ligne, un serveur qui n'annonce pas de charset fait
+  lire l'UTF-8 comme du Latin-1 et « héros » s'affiche « hÃ©ros ».
+- **Dialogues.** Une iframe cloisonnée sans `allow-modals` ignore purement
+  `confirm()` et `prompt()` : le premier renvoie `false`, le second `null`. Les
+  actions qui en dépendaient (recruter, renvoyer, réinitialiser, effacer,
+  battre en retraite, exporter) devenaient donc muettes. L'interface utilise à
+  la place ses propres boîtes de dialogue, rendues dans la page.
+- **Stockage.** Si `localStorage` est refusé, le profil bascule sur un stockage
+  en mémoire et l'écran-titre le signale : la session reste jouable, et l'export
+  de sauvegarde permet de conserver la progression.
+
 ## Organisation du code
 
 ```

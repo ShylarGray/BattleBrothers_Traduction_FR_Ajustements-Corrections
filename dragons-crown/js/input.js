@@ -51,7 +51,20 @@ DC.Input = (function () {
   }
   for (var i = 0; i < 4; i++) pads.push(makePad(i));
 
+  function typingInField(e) {
+    var t = e.target;
+    if (!t || !t.tagName) return false;
+    var tag = t.tagName.toUpperCase();
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || t.isContentEditable;
+  }
+
   function onKey(e, down) {
+    // Une saisie en cours a la priorité : sans cela, l'espace et les flèches
+    // seraient avalés par le jeu au lieu d'atteindre le champ de texte.
+    if (typingInField(e)) {
+      keyDown = {};
+      return;
+    }
     // Empêche le défilement de la page sur les touches de jeu.
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Tab'].indexOf(e.code) >= 0) e.preventDefault();
     keyDown[e.code] = down;
