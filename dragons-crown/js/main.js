@@ -34,6 +34,10 @@ DC.Game = (function () {
 
     DC.Input.init();
     DC.UI.init(this);
+    // Le calque tactile vit dans #app : il suit la mise à l'échelle du canevas.
+    var s = this.profile.settings;
+    if (s.touch === undefined) s.touch = DC.Touch.supported();
+    DC.Touch.init(document.getElementById('app'), { enabled: s.touch, slot: 0 });
     DC.Hero.setBlessings(this.profile.blessings || {});
     DC.Audio.setVolumes(this.profile.settings);
 
@@ -248,6 +252,7 @@ DC.Game = (function () {
 
   Game.prototype.draw = function () {
     var ctx = this.ctx;
+    DC.Touch.setVisible(this.state === 'playing' && !!this.world);
     ctx.save();
     ctx.clearRect(0, 0, VIEW_W, VIEW_H);
     if (this.world && (this.state === 'playing' || this.state === 'paused')) {

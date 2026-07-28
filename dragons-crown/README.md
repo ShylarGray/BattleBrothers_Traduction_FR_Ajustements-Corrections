@@ -36,6 +36,16 @@ emplacements dans l'ordre de branchement ; elles restent prioritaires sur le cla
 pour le joueur concerné. Pour un vrai coop à 4, une ou deux manettes évitent les
 limites de rollover du clavier.
 
+**Sur écran tactile**, les commandes apparaissent d'elles-mêmes pendant les
+combats et se masquent dans les menus. Le pouce gauche se pose **n'importe où
+sur la moitié gauche** — un manche virtuel naît sous le doigt, sans pastille à
+viser. À droite : **⚔ Attaque**, **⤴ Saut**, **✦ Magie**, plus les raccourcis
+**★ Super**, **⚔▾ Lourde**, **🧪 Objet** et **↑ Agir** (coffres, alliés à terre),
+et un bouton pause au centre. Les boutons sont translucides au repos pour ne pas
+masquer un ennemi qui arrive, et le multi-touch permet de se déplacer en frappant.
+Jouez en mode paysage — le jeu invite à tourner l'appareil en portrait. Le tout se
+désactive dans *Options → Commandes tactiles*.
+
 Techniques communes à toutes les classes :
 
 - **Combo** : appuis répétés sur Attaque (2 à 4 coups selon la classe).
@@ -167,7 +177,7 @@ Deux contraintes de ce contexte sont traitées dans le code lui-même :
 index.html            chargement des scripts (aucun module, ouvrable en local)
 css/style.css         interface DOM (menus, boutiques)
 js/utils.js           maths, RNG seedé, collisions AABB 3 axes
-js/input.js           4 manettes virtuelles (clavier + Gamepad API)
+js/input.js           4 manettes virtuelles (clavier + Gamepad API + tactile)
 js/audio.js           synthèse WebAudio des bruitages et des musiques
 js/save.js            profil persistant (localStorage, export/import)
 js/data/classes.js    classes, mouvements, arbres de compétences, table d'XP
@@ -180,6 +190,7 @@ js/fx.js              particules, nombres flottants, secousses
 js/entities.js        acteurs, joueurs, ennemis, IA, projectiles
 js/render.js          décors en parallaxe et personnages procéduraux
 js/world.js           salles, vagues, résolution des coups, interactions
+js/touch.js           manche virtuel et boutons tactiles
 js/hud.js             ATH en jeu
 js/ui.js              écrans DOM (ville, boutiques, guilde, carte, résultats)
 js/main.js            boucle à pas fixe (60 Hz) et machine à états

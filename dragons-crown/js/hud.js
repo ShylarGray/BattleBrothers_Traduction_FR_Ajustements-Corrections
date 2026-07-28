@@ -229,10 +229,13 @@ DC.Hud = (function () {
     ctx.font = '11px "Trebuchet MS", sans-serif';
     ctx.fillStyle = 'rgba(232,232,240,0.8)';
     ctx.fillText(world.run.bag.length + ' objet(s) ramassé(s)', VIEW_W - 12, VIEW_H - 30);
-    ctx.textAlign = 'left';
-    ctx.fillStyle = 'rgba(232,232,240,0.55)';
-    ctx.font = '10px "Trebuchet MS", sans-serif';
-    ctx.fillText('Échap : pause   ·   ↑ : interagir   ·   Q/E : objet suivant', 12, VIEW_H - 14);
+    // Rappel des commandes clavier : inutile, et trompeur, quand on joue au doigt.
+    if (!(DC.Touch && DC.Touch.visible)) {
+      ctx.textAlign = 'left';
+      ctx.fillStyle = 'rgba(232,232,240,0.55)';
+      ctx.font = '10px "Trebuchet MS", sans-serif';
+      ctx.fillText('Échap : pause   ·   ↑ : interagir   ·   Q/E : objet suivant', 12, VIEW_H - 14);
+    }
   }
 
   function draw(ctx, world) {

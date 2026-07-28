@@ -144,6 +144,17 @@ DC.Input = (function () {
       var hasPad = readGamepad(s, p);
       p.connected = hasPad || true; // le clavier reste toujours disponible
       p.hasGamepad = hasPad;
+      // Commandes tactiles : troisième source fusionnée dans la même manette,
+      // pour que le jeu ignore d'où vient l'entrée.
+      var t = DC.Touch && DC.Touch.read ? DC.Touch.read(s) : null;
+      if (t) {
+        BUTTONS.forEach(function (b) { if (t.held[b]) p.held[b] = true; });
+        if (t.axisX) p.axisX = t.axisX;
+        if (t.axisZ) p.axisZ = t.axisZ;
+        p.hasTouch = true;
+      } else {
+        p.hasTouch = false;
+      }
       // Axes analogiques : le clavier remplit si la manette est au neutre.
       if (p.axisX === 0) { kbAx = (p.held.right ? 1 : 0) - (p.held.left ? 1 : 0); p.axisX = kbAx; }
       if (p.axisZ === 0) { kbAz = (p.held.down ? 1 : 0) - (p.held.up ? 1 : 0); p.axisZ = kbAz; }
@@ -152,6 +163,7 @@ DC.Input = (function () {
         p.released[b] = !p.held[b] && p.last[b];
       });
     }
+    if (DC.Touch && DC.Touch.tick) DC.Touch.tick();
     anyKeyFlag = null;
   }
 

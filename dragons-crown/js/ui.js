@@ -186,6 +186,14 @@ DC.UI = (function () {
       '<li><b>Manettes</b> : branchez-les puis appuyez sur un bouton ; elles sont assignées dans l\'ordre.</li>' +
       '<li><b>Q / E</b> : changer d\'objet actif dans la besace ; <b>Échap</b> : pause.</li>' +
       '</ul>' +
+      '<h2>Sur écran tactile</h2>' +
+      '<ul class="hints">' +
+      '<li>Posez le pouce n\'importe où sur la <b>moitié gauche</b> : un manche virtuel apparaît sous votre doigt.</li>' +
+      '<li>À droite : <b>⚔ Attaque</b>, <b>⤴ Saut</b>, <b>✦ Magie</b>, et les raccourcis <b>★ Super</b>, ' +
+      '<b>⚔▾ Lourde</b>, <b>🧪 Objet</b>, <b>↑ Agir</b> (coffres et alliés à terre).</li>' +
+      '<li>Jouez en <b>mode paysage</b> ; les commandes se masquent d\'elles-mêmes dans les menus.</li>' +
+      '<li>Elles s\'activent automatiquement sur un appareil tactile, et se désactivent dans les Options.</li>' +
+      '</ul>' +
       btn('back', 'Retour') + '</div>';
   }
 
@@ -196,6 +204,8 @@ DC.UI = (function () {
       '<div class="opt"><label>Volume de la musique</label><input type="range" min="0" max="1" step="0.05" value="' + s.music + '" data-act="setMusic"><span>' + Math.round(s.music * 100) + ' %</span></div>' +
       '<div class="opt"><label>Nombres de dégâts</label>' + btn('toggle', s.showDamage ? 'Activés' : 'Désactivés', 'showDamage') + '</div>' +
       '<div class="opt"><label>Secousses d\'écran</label>' + btn('toggle', s.screenShake ? 'Activées' : 'Désactivées', 'screenShake') + '</div>' +
+      '<div class="opt"><label>Commandes tactiles</label>' + btn('toggleTouch', s.touch ? 'Affichées' : 'Masquées') +
+      '<span class="muted small">' + (DC.Touch.supported() ? 'Écran tactile détecté' : 'Utile sur écran tactile') + '</span></div>' +
       '<div class="opt"><label>Sauvegarde</label>' + btn('exportSave', 'Exporter') + btn('importSave', 'Importer') + '</div>' +
       btn('back', 'Retour') + '</div>';
   }
@@ -957,6 +967,12 @@ DC.UI = (function () {
     toggle: function (key) {
       var s = game.profile.settings;
       s[key] = !s[key];
+      game.saveProfile(); render();
+    },
+    toggleTouch: function () {
+      var s = game.profile.settings;
+      s.touch = !s.touch;
+      DC.Touch.setEnabled(s.touch);
       game.saveProfile(); render();
     },
     exportSave: function () {

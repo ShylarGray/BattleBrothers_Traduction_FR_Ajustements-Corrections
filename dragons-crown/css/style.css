@@ -473,3 +473,153 @@ ul.hints b { color: var(--gold); }
   .screen, .modal-backdrop, .toast { animation: none; }
   .btn, .place, .class-card, .stage-card { transition: none; }
 }
+
+/* ======================================================================
+ * Commandes tactiles
+ * Le calque vit dans l'espace 960×540 du jeu : il suit donc automatiquement
+ * la mise à l'échelle du canevas, quelle que soit la taille de l'écran.
+ * ==================================================================== */
+#touch-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: none;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#touch-layer.shown { display: block; }
+
+/* Au repos les commandes s'effacent : elles occupent la zone de jeu, il ne
+   faut pas qu'elles masquent un ennemi qui arrive. */
+.touch-base, .touch-knob, .touch-btn { opacity: .58; transition: opacity .15s; }
+.touch-base.on, .touch-knob, .touch-btn.on { opacity: .95; }
+
+.touch-stickzone { position: absolute; left: 0; bottom: 0; width: 50%; height: 74%; }
+
+.touch-base,
+.touch-knob,
+.touch-btn {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.touch-base {
+  border: 2px solid rgba(255, 210, 74, .30);
+  background: radial-gradient(circle at 50% 50%, rgba(255, 210, 74, .10), rgba(8, 6, 14, .34));
+  transition: border-color .12s, background .12s;
+}
+.touch-base.on { border-color: rgba(255, 210, 74, .62); background: radial-gradient(circle at 50% 50%, rgba(255, 210, 74, .18), rgba(8, 6, 14, .44)); }
+
+.touch-knob {
+  background: radial-gradient(circle at 38% 34%, #6a5f8a, #262036 70%);
+  border: 2px solid rgba(255, 226, 150, .55);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .6);
+}
+
+.touch-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  color: #fff2cf;
+  background: radial-gradient(circle at 40% 32%, rgba(74, 62, 104, .92), rgba(24, 20, 38, .92));
+  border: 2px solid rgba(255, 210, 74, .38);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .55);
+  transition: transform .06s, background .1s, border-color .1s;
+}
+.touch-btn .tb-glyph { font-size: 20px; line-height: 1; }
+.touch-btn .tb-name {
+  font-size: 8.5px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: rgba(255, 242, 207, .68);
+}
+.touch-btn.on { transform: scale(.9); border-color: var(--gold); background: radial-gradient(circle at 40% 32%, rgba(140, 108, 40, .95), rgba(52, 38, 12, .95)); }
+
+.touch-btn.tone-main { border-color: rgba(255, 150, 90, .55); }
+.touch-btn.tone-main .tb-glyph { font-size: 30px; }
+.touch-btn.tone-magic { border-color: rgba(140, 168, 255, .55); }
+.touch-btn.tone-super { border-color: rgba(255, 210, 74, .8); }
+.touch-btn.tone-super .tb-glyph,
+.touch-btn.tone-small .tb-glyph { font-size: 15px; }
+.touch-btn.tone-tiny {
+  background: rgba(12, 10, 20, .7);
+  border-color: rgba(255, 255, 255, .18);
+}
+.touch-btn.tone-tiny .tb-glyph { font-size: 12px; }
+.touch-btn.tone-tiny .tb-name { display: none; }
+
+/* ======================================================================
+ * Écrans tactiles : cibles et textes agrandis dans les menus.
+ * Le contenu est mis à l'échelle avec le jeu, donc à 960×540 réduit sur un
+ * téléphone, les tailles de base deviennent illisibles.
+ * ==================================================================== */
+@media (pointer: coarse) {
+  .btn { font-size: 15px; padding: 10px 16px; }
+  .btn.small { font-size: 13px; padding: 7px 12px; }
+  .btn.big { font-size: 18px; padding: 14px 26px; }
+  .tabs.small .btn { font-size: 12px; padding: 6px 11px; }
+
+  h1 { font-size: 26px; }
+  h2 { font-size: 15px; }
+  .muted, .small { font-size: 13px; }
+
+  .item { font-size: 14px; }
+  .item .iname { font-size: 15px; }
+  .item .isub { font-size: 12.5px; }
+  .item .stat, .item .proc { font-size: 12.5px; }
+  .grid-items { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+
+  .hc-name { font-size: 16px; }
+  .hc-cls, .hc-stats, .hc-sp { font-size: 13px; }
+  .cc-name { font-size: 20px; }
+  .cc-role, .cc-stats, .cc-pass { font-size: 12.5px; }
+  .cc-blurb, .cc-moves { font-size: 13.5px; }
+  .place h3 { font-size: 18px; }
+  .place p { font-size: 13.5px; }
+  .sc-name { font-size: 15px; }
+  .sc-lv, .sc-blurb { font-size: 12.5px; }
+  .sk-name { font-size: 14.5px; }
+  .sk-desc, .sk-rank { font-size: 12.5px; }
+  ul.hints, table.ctrl { font-size: 14px; }
+  .recruit-bar input[type=text] { font-size: 16px; padding: 10px 12px; }
+  .modal-body, .modal-input { font-size: 14px; }
+  .scrolly::-webkit-scrollbar { width: 12px; }
+}
+
+/* Invitation à passer en paysage : en portrait le jeu tient sur une bande
+   trop étroite pour rester lisible. */
+#rotate-hint {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 30px;
+  text-align: center;
+  background: linear-gradient(180deg, #0c0a16, #241a30);
+  color: var(--text);
+}
+#rotate-hint .rh-icon {
+  font-size: 54px;
+  animation: rotate-nudge 2.2s ease-in-out infinite;
+}
+#rotate-hint h2 { color: var(--gold); font-size: 17px; letter-spacing: .1em; }
+#rotate-hint p { font-size: 14px; color: #cfc8e2; max-width: 30ch; line-height: 1.5; }
+@keyframes rotate-nudge {
+  0%, 45%, 100% { transform: rotate(0deg); }
+  60%, 85% { transform: rotate(90deg); }
+}
+@media (pointer: coarse) and (orientation: portrait) {
+  #rotate-hint { display: flex; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #rotate-hint .rh-icon { animation: none; }
+}

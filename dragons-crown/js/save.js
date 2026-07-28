@@ -44,7 +44,7 @@ DC.Save = (function () {
       progress: { cleared: {}, bestClear: {}, difficulty: 'normal', routes: {}, unlockedDiff: 1 },
       shopDay: 1,
       stats: { runs: 0, wins: 0, kills: 0, goldEarned: 0, bestCombo: 0, playtime: 0 },
-      settings: { sfx: 0.7, music: 0.4, showDamage: true, screenShake: true, hardLoot: false }
+      settings: { sfx: 0.7, music: 0.4, showDamage: true, screenShake: true, hardLoot: false, touch: undefined }
     };
   }
 
