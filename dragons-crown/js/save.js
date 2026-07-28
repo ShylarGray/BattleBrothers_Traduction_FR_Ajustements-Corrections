@@ -7,6 +7,31 @@ DC.Save = (function () {
 
   var KEY = 'dragons_crown_fr_save_v1';
 
+  /**
+   * localStorage n'est pas toujours disponible : navigation privée, page servie
+   * depuis file:// sur certains navigateurs, ou iframe cloisonnée. Le simple
+   * fait d'y accéder peut lever une SecurityError. On bascule alors sur un
+   * stockage en mémoire : la partie en cours reste parfaitement jouable, seule
+   * la persistance entre deux sessions est perdue.
+   */
+  var store = (function () {
+    try {
+      var probe = '__dc_probe__';
+      window.localStorage.setItem(probe, '1');
+      window.localStorage.removeItem(probe);
+      return { get: function (k) { return window.localStorage.getItem(k); },
+        set: function (k, v) { window.localStorage.setItem(k, v); },
+        del: function (k) { window.localStorage.removeItem(k); },
+        persistent: true };
+    } catch (e) {
+      var mem = {};
+      return { get: function (k) { return mem[k] !== undefined ? mem[k] : null; },
+        set: function (k, v) { mem[k] = String(v); },
+        del: function (k) { delete mem[k]; },
+        persistent: false };
+    }
+  })();
+
   function fresh() {
     return {
       version: 1,
@@ -63,7 +88,7 @@ DC.Save = (function () {
 
   function load() {
     try {
-      var raw = localStorage.getItem(KEY);
+      var raw = store.get(KEY);
       if (!raw) return null;
       var data = JSON.parse(raw);
       if (!data || data.version !== 1) return null;
@@ -88,7 +113,7 @@ DC.Save = (function () {
 
   function save(profile) {
     try {
-      localStorage.setItem(KEY, JSON.stringify(profile));
+      store.set(KEY, JSON.stringify(profile));
       return true;
     } catch (e) {
       console.warn('Échec de sauvegarde :', e);
@@ -97,7 +122,7 @@ DC.Save = (function () {
   }
 
   function wipe() {
-    try { localStorage.removeItem(KEY); } catch (e) { /* ignoré */ }
+    try { store.del(KEY); } catch (e) { /* ignoré */ }
   }
 
   function exportString(profile) {
@@ -111,5 +136,9 @@ DC.Save = (function () {
     } catch (e) { return null; }
   }
 
-  return { fresh: fresh, load: load, save: save, wipe: wipe, exportString: exportString, importString: importString, KEY: KEY };
+  return {
+    fresh: fresh, load: load, save: save, wipe: wipe,
+    exportString: exportString, importString: importString, KEY: KEY,
+    get persistent() { return store.persistent; }
+  };
 })();

@@ -99,8 +99,13 @@ DC.UI = (function () {
       btn('options', 'Options') +
       (hasSave ? btn('wipeAsk', 'Effacer la sauvegarde', null, 'danger') : '') +
       '</div>' +
-      '<div class="foot">Conseil : chaque joueur peut utiliser le clavier ou une manette. ' +
-      'Le butin non identifié doit être expertisé à la Forge.</div>' +
+      '<div class="foot">' +
+      (DC.Save.persistent
+        ? 'Conseil : chaque joueur peut utiliser le clavier ou une manette. ' +
+        'Le butin non identifié doit être expertisé à la Forge.'
+        : '<b class="warn-inline">Sauvegarde locale indisponible ici</b> — votre progression tiendra le temps ' +
+        'de la session, mais sera perdue en fermant l\'onglet. Utilisez Options → Exporter pour la conserver.') +
+      '</div>' +
       '</div>';
   }
 
